@@ -14,12 +14,25 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
-import webapp2
+import endpoints
+from protorpc import messages
+from protorpc import message_types
+from protorpc import remote
 
-class MainHandler(webapp2.RequestHandler):
-    def get(self):
-        self.response.write('Hello world!')
 
-app = webapp2.WSGIApplication([
-    ('/', MainHandler)
-], debug=True)
+# Message Classes
+class DefaultResponseMessage(messages.Message):
+    message = messages.StringField(1)
+
+
+@endpoints.api(name="recipexServerApi", version="v1",
+               hostname="recipex-1281.appspot.com",
+               allowed_client_ids=[endpoints.API_EXPLORER_CLIENT_ID],
+               scopes=[endpoints.EMAIL_SCOPE])
+class RecipexServerApi(remote.Service):
+    @endpoints.method(message_types.VoidMessage, DefaultResponseMessage,
+                      path='hello', http_method="GET", name="hello.helloWorld")
+    def hello_world(self, request):
+        return DefaultResponseMessage(message="Hello World!")
+
+APPLICATION = endpoints.api_server([RecipexServerApi])

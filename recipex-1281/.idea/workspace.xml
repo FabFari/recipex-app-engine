@@ -2,10 +2,7 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="8eb28111-c0a9-4fdb-804d-85c152fce38c" name="Default" comment="">
-      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/.idea/vcs.xml" />
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/app.yaml" afterPath="$PROJECT_DIR$/app.yaml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/main.py" afterPath="$PROJECT_DIR$/main.py" />
     </list>
     <ignored path="recipex-1281.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -40,8 +37,8 @@
       <file leaf-file-name="main.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/main.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.73021585">
-              <caret line="33" column="79" selection-start-line="33" selection-start-column="79" selection-end-line="33" selection-end-column="79" />
+            <state vertical-scroll-proportion="0.8201439">
+              <caret line="35" column="61" selection-start-line="35" selection-start-column="61" selection-end-line="35" selection-end-column="61" />
               <folding>
                 <element signature="e#601#617#0" expanded="true" />
               </folding>
@@ -188,7 +185,13 @@
       <option name="project" value="LOCAL" />
       <updated>1460646049368</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Hello World Message Working">
+      <created>1460650486977</created>
+      <option name="number" value="00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1460650486977</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -221,7 +224,8 @@
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Create Branch Fabrizio" />
-    <option name="LAST_COMMIT_MESSAGE" value="Create Branch Fabrizio" />
+    <MESSAGE value="Hello World Message Working" />
+    <option name="LAST_COMMIT_MESSAGE" value="Hello World Message Working" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
@@ -238,8 +242,8 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/main.py">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.73021585">
-          <caret line="33" column="79" selection-start-line="33" selection-start-column="79" selection-end-line="33" selection-end-column="79" />
+        <state vertical-scroll-proportion="0.8201439">
+          <caret line="35" column="61" selection-start-line="35" selection-start-column="61" selection-end-line="35" selection-end-column="61" />
           <folding>
             <element signature="e#601#617#0" expanded="true" />
           </folding>

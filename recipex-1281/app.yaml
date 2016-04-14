@@ -9,9 +9,12 @@ handlers:
   static_files: favicon.ico
   upload: favicon\.ico
 
-- url: .*
-  script: main.app
+# Endpoints handler
+- url: /_ah/spi/.*
+  script: main.APPLICATION
 
 libraries:
-- name: webapp2
-  version: "2.5.2"
+- name: pycrypto
+  version: latest
+- name: endpoints
+  version: 1.0

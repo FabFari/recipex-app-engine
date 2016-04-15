@@ -19,6 +19,41 @@ from protorpc import messages
 from protorpc import message_types
 from protorpc import remote
 
+from google.appengine.ext import ndb
+
+# Datastore Classes
+class User(ndb.Model):
+    email = ndb.StringProperty(1, required=True)
+    name = ndb.StringProperty(2, required=True)
+    surname = ndb.StringProperty(3, required=True)
+    birth = ndb.DateProperty(4, auto_now_add=True)
+    city = ndb.StringProperty(5)
+
+class Caregiver(ndb.Model):
+    field = ndb.StringProperty(1, required=True)
+    years_exp = ndb.StringProperty(2)
+
+class Measurement(ndb.Model):
+    id = ndb.StringProperty(1)
+    date_time = ndb.DateTimeProperty(2, auto_now_add=True)
+    kind = ndb.StringProperty(3, required=True)
+    # Blood Pressure (BP)
+    systolic = ndb.IntegerProperty(4)
+    diastolic = ndb.IntegerProperty(5)
+    pulse = ndb.IntegerProperty(6)
+    # Heart Rate (HR)
+    bpm = ndb.IntegerProperty(7)
+    # Respiratory Rate
+    respirations = ndb.IntegerProperty(8)
+    # Pulse Oximetry (SpO2)
+    spo2 = ndb.FloatProperty(9)
+    # Blood Sugar (HGT)
+    hgt = ndb.FloatProperty(10)
+    # Body Temperature
+    degrees = ndb.FloatProperty(11)
+    # Pain
+    nrs = ndb.IntegerProperty(12)
+
 
 # Message Classes
 class DefaultResponseMessage(messages.Message):

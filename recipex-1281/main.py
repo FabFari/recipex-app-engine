@@ -103,6 +103,7 @@ class UpdateUserMessage(messages.Message):
 class UserIdMessage(messages.Message):
     id = messages.StringField(1, required=True)
 
+
 class UserInfoMessage(messages.Message):
     email = messages.StringField(1)
     name = messages.StringField(2)

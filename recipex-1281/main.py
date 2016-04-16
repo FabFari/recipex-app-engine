@@ -114,7 +114,7 @@ class UserInfoMessage(messages.Message):
     address = messages.StringField(7)
     field = messages.StringField(8)
     years_exp = messages.IntegerField(9)
-    response = messages.MessageField(message_type=DefaultResponseMessage)
+    response = messages.MessageField(DefaultResponseMessage, 10)
 
 
 @endpoints.api(name="recipexServerApi", version="v1",
@@ -195,6 +195,7 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(UserIdMessage, UserInfoMessage,
                       path="users/{id}", http_method="GET", name="user.getUser")
     def get_user(self, request):
+        RecipexServerApi.authentication_check()
         user = Key(urlsafe=request.id).get()
         if not user:
             return UserInfoMessage(response=DefaultResponseMessage(code="404 Not Found",
@@ -216,6 +217,7 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(UserIdMessage, DefaultResponseMessage,
                       path="users/{id}", http_method="DELETE", name="user.deleteUser")
     def delete_user(self, request):
+        RecipexServerApi.authentication_check()
         user = Key(urlsafe=request.id).get()
         if not user:
             return DefaultResponseMessage(code="404 Not Found", message="User not existent.")

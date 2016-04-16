@@ -22,7 +22,6 @@ from protorpc import remote
 
 from google.appengine.ext import ndb
 
-import logging
 from datetime import datetime
 
 

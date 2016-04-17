@@ -35,16 +35,16 @@ class User(ndb.Model):
     city = ndb.StringProperty()
     address = ndb.StringProperty()
     relatives = ndb.KeyProperty(repeated=True)
+    pc_phycian = ndb.KeyProperty()
+    visiting_nurse = ndb.KeyProperty()
+    caregivers = ndb.KeyProperty(repeated=True)
 
 
+# Mettere disponibilita con Google Calendar
 class Caregiver(ndb.Model):
     field = ndb.StringProperty(required=True)
     years_exp = ndb.StringProperty()
     patients = ndb.KeyProperty()
-
-
-class Patient(ndb.Model):
-    caregivers = ndb.KeyProperty(repeated=True)
 
 
 class Measurement(ndb.Model):
@@ -66,6 +66,8 @@ class Measurement(ndb.Model):
     degrees = ndb.FloatProperty()
     # Pain (P)
     nrs = ndb.IntegerProperty()
+    # Cholesterol
+    level = ndb.IntegerProperty()
 
 
 # Message Classes

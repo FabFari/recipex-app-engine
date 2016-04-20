@@ -52,7 +52,7 @@ class User(ndb.Model):
 class Caregiver(ndb.Model):
     field = ndb.StringProperty(required=True)
     years_exp = ndb.StringProperty()
-    patients = ndb.KeyProperty()
+    patients = ndb.PickleProperty(compressed=True)
 
 
 class Measurement(ndb.Model):
@@ -75,6 +75,13 @@ class Measurement(ndb.Model):
     nrs = ndb.IntegerProperty()
     # Cholesterol (CHL)
     chl_level = ndb.IntegerProperty()
+
+
+class Message(ndb.Model):
+    sender = ndb.KeyProperty(required=True)
+    receiver = ndb.KeyProperty(required=True)
+    message = ndb.StringProperty(required=True)
+    measurement = ndb.KeyProperty()
 
 
 # MESSAGE CLASSES
@@ -200,7 +207,14 @@ class MeasurementInfoMessage(messages.Message):
 
 class UserRelativeCaregiverMessage(messages.Message):
     id = messages.IntegerField(1, required=True)
-    set = messages.IntegerField(2, required=True, repeated=True)
+    to_add = messages.IntegerField(2, repeated=True)
+    to_del = messages.IntegerField(3, repeated=True)
+
+
+class UserFirstAidInfoMessage(messages.Message):
+    id = messages.IntegerField(1, required=True)
+    pc_physician = messages.IntegerField(2)
+    visiting_nurse = messages.IntegerField(3)
 
 
 @endpoints.api(name="recipexServerApi", version="v1",
@@ -306,7 +320,7 @@ class RecipexServerApi(remote.Service):
         return DefaultResponseMessage(code="200 OK", message="User deleted.")
 
     @endpoints.method(UserRelativeCaregiverMessage, DefaultResponseMessage,
-                      path="users/{id}/relatives", http_method="PATCH", name="user.addRelatives")
+                      path="users/{id}/relatives", http_method="PATCH", name="user.updateRelatives")
     def update_relatives(self, request):
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -317,6 +331,7 @@ class RecipexServerApi(remote.Service):
         if not user.relatives:
             relatives = user.relatives
         # TODO Gestire la responsabilità doppia sui dizionari (Paziente-Familiare)
+        '''
         for relative in range(len(request.set)):
             # If already present, means remove
             if relative in relatives:
@@ -327,12 +342,24 @@ class RecipexServerApi(remote.Service):
                 if not relative_key.get():
                     return DefaultResponseMessage(code="404 Not Found", message="User(s) not existent.")
                 relatives[relative] = relative_key
+        '''
+        for relative in range(len(request.to_add)):
+            if relative not in relatives:
+                relative_key = Key(User, relative)
+                if not relative_key.get():
+                    return DefaultResponseMessage(code="404 Not Found", message="User(s) not existent.")
+                relatives[relative] = relative_key
+
+        for relative in range(len(request.to_del)):
+            if relative in relatives:
+                del relatives[relative]
 
         user.relatives = relatives
+        user.put()
         return DefaultResponseMessage(code="200 OK", message="Relatives updated.")
 
     @endpoints.method(UserRelativeCaregiverMessage, DefaultResponseMessage,
-                      path="users/{id}/relatives", http_method="PATCH", name="user.addRelatives")
+                      path="users/{id}/caregivers", http_method="PATCH", name="user.updateCaregivers")
     def update_caregivers(self, request):
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -343,6 +370,7 @@ class RecipexServerApi(remote.Service):
         if not user.caregivers:
             caregivers = user.caregivers
         # TODO Gestire la responsabilità doppia trai dizionari (Paziente-Caregiver)
+        '''
         for caregiver in range(len(request.set)):
             # If already present, means remove
             if caregiver in caregivers:
@@ -353,9 +381,101 @@ class RecipexServerApi(remote.Service):
                 if not caregiver_key.get():
                     return DefaultResponseMessage(code="404 Not Found", message="Caregiver(s) not existent.")
             caregivers[caregiver] = caregiver_key
+        '''
+        for caregiver in range(len(request.to_add)):
+            if caregiver not in caregivers:
+                caregiver_key = Key(Caregiver, caregiver)
+                if not caregiver_key.get():
+                    return DefaultResponseMessage(code="404 Not Found", message="Caregiver(s) not existent.")
+                caregivers[caregiver] = caregiver_key
+
+        for caregiver in range(len(request.to_del)):
+            if caregiver in caregivers:
+                del caregivers[caregiver]
 
         user.caregivers = caregivers
-        return DefaultResponseMessage(code="200 OK", message="Relatives updated.")
+        user.put()
+        return DefaultResponseMessage(code="200 OK", message="Caregivers updated.")
+
+    @endpoints.method(UserRelativeCaregiverMessage, DefaultResponseMessage,
+                      path="users/{id}/patients", http_method="PATCH", name="user.updatePatients")
+    def update_patients(self, request):
+        RecipexServerApi.authentication_check()
+        user = Key(User, request.id).get()
+        if not user:
+            return DefaultResponseMessage(code="404 Not Found", message="User not existent.")
+
+        caregiver = Key(Caregiver, request.id).get()
+        if not caregiver:
+            return DefaultResponseMessage(code="404 Not Found", message="User not a caregiver.")
+
+        patients = {}
+        if not caregiver.patients:
+            patients = caregiver.patients
+        # TODO Gestire la responsabilità doppia trai dizionari (Paziente-Caregiver)
+        '''
+        for caregiver in range(len(request.set)):
+            # If already present, means remove
+            if caregiver in caregivers:
+                del caregivers[caregiver]
+            # If not present, means add
+            else:
+                caregiver_key = Key(User, caregiver)
+                if not caregiver_key.get():
+                    return DefaultResponseMessage(code="404 Not Found", message="Caregiver(s) not existent.")
+            caregivers[caregiver] = caregiver_key
+        '''
+        for patient in range(len(request.to_add)):
+            if patient not in patients:
+                patient_key = Key(User, patient)
+                if not patient_key.get():
+                    return DefaultResponseMessage(code="404 Not Found", message="Patient(s) not existent.")
+                patients[patient] = patient_key
+
+        for patient in range(len(request.to_del)):
+            if patient in patients:
+                del patients[patient]
+
+        user.patients = patients
+        user.put()
+        return DefaultResponseMessage(code="200 OK", message="Patients updated.")
+
+    @endpoints.method(UserFirstAidInfoMessage, DefaultResponseMessage,
+                      path="users/{id}/firstaidinfo", http_method="PATCH", name="user.updateFirstAidInfo")
+    def update_first_aid_info(self, request):
+        RecipexServerApi.authentication_check()
+        user = Key(User, request.id).get()
+        if not user:
+            return DefaultResponseMessage(code="404 Not Found", message="User not existent.")
+
+        if not request.pc_physician:
+            if user.pc_physician.id() == request.pc_physician:
+                return DefaultResponseMessage(code="412 Precondition Failed", message="PC physician already registered.")
+            pc_physician_usr = Key(User, request.pc_physician).get()
+            if not pc_physician_usr:
+                return DefaultResponseMessage(code="404 Not Found", message="User not existent.")
+            pc_physician_crgv = Caregiver.query(ancestor=pc_physician_usr.key).get()
+            if not pc_physician_crgv:
+                return DefaultResponseMessage(code="404 Not Found", message="User not a Caregiver.")
+            user.pc_physician = pc_physician_usr.key
+            pc_physician_crgv.patients[request.id] = user.key
+            user.put()
+            pc_physician_crgv.put()
+
+        if not request.visiting_nurse:
+            if user.visiting_nurse.id() == request.visiting_nurse:
+                return DefaultResponseMessage(code="412 Precondition Failed", message="Visiting nurse already registered.")
+            visiting_nurse_usr = Key(User, request.visiting_nurse).get()
+            if not visiting_nurse_usr:
+                return DefaultResponseMessage(code="404 Not Found", message="User not existent.")
+            visiting_nurse_crgv = Caregiver.query(ancestor=visiting_nurse_usr.key).get()
+            if not visiting_nurse_crgv:
+                return DefaultResponseMessage(code="404 Not Found", message="User not a Caregiver.")
+            user.visiting_nurse = visiting_nurse_usr.key
+            visiting_nurse_crgv.patients[request.id] = user.key
+            user.put()
+            visiting_nurse_crgv.put()
+        return DefaultResponseMessage(code="200 OK", message="First aid info updated.")
 
     @endpoints.method(AddMeasurementMessage, DefaultResponseMessage,
                       path="users/{user_id}/measurements", http_method="POST", name="measurements.addMeasurement")

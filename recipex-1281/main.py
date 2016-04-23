@@ -26,10 +26,13 @@ from datetime import datetime
 
 import logging
 
+# TODO Controlla bene tutti i set: quando inserisci devi prima controllare... e non lo fai quasi mai!!!
 
 # CONSTANTS
 
 MEASUREMENTS_KIND = ["BP", "HR", "RR", "SpO2", "HGT", "TMP", "PAIN", "CHL"]
+REQUEST_KIND = ["RELATIVE", "CAREGIVER"]
+ROLE_TYPE =["PATIENT", "CAREGIVER"]
 
 
 # DATASTORE CLASSES
@@ -48,13 +51,13 @@ class User(ndb.Model):
     caregivers = ndb.PickleProperty(compressed=True)
 
 
-# TODO Mettere disponibilita con Google Calendar
 class Caregiver(ndb.Model):
     field = ndb.StringProperty(required=True)
     years_exp = ndb.StringProperty()
     patients = ndb.PickleProperty(compressed=True)
 
 
+# TODO Aggiungere tabella Terapia?
 class Measurement(ndb.Model):
     date_time = ndb.DateTimeProperty(auto_now_add=True)
     kind = ndb.StringProperty(required=True)
@@ -83,6 +86,15 @@ class Message(ndb.Model):
     message = ndb.StringProperty(required=True)
     hasRead = ndb.BooleanProperty(required=True)
     measurement = ndb.KeyProperty()
+
+
+class Request(ndb.Model):
+    sender = ndb.KeyProperty(required=True)
+    receiver = ndb.KeyProperty(required=True)
+    kind = ndb.StringProperty(required=True)
+    role = ndb.StringProperty()
+    caregiver = ndb.KeyProperty()
+    message = ndb.StringProperty()
 
 
 # MESSAGE CLASSES
@@ -129,9 +141,14 @@ class UserInfoMessage(messages.Message):
     sex = messages.StringField(5)
     city = messages.StringField(6)
     address = messages.StringField(7)
-    field = messages.StringField(8)
-    years_exp = messages.IntegerField(9)
-    response = messages.MessageField(DefaultResponseMessage, 10)
+    relatives = messages.IntegerField(8, repeated=True)
+    pc_physician = messages.IntegerField(9)
+    visiting_nurse = messages.IntegerField(10)
+    caregivers = messages.IntegerField(11, repeated=True)
+    field = messages.StringField(12)
+    years_exp = messages.IntegerField(13)
+    patients = messages.IntegerField(14)
+    response = messages.MessageField(DefaultResponseMessage, 15)
 
 
 class AddMeasurementMessage(messages.Message):
@@ -254,6 +271,41 @@ class UserMessagesMessage(messages.Message):
     response = messages.MessageField(DefaultResponseMessage, 2)
 
 
+class RequestSendMessage(messages.Message):
+    sender = messages.IntegerField(1, required=True)
+    receiver = messages.IntegerField(2, required=True)
+    kind = messages.StringField(3, required=True)
+    role = messages.StringField(4)
+    message = messages.StringField(5)
+
+
+class RequestIdMessage(messages.Message):
+    user_id = messages.IntegerField(1, required=True)
+    id = messages.IntegerField(2, required=True)
+    kind = messages.StringField(3)
+
+class RequestAnswerMessage(messages.Message):
+    user_id = messages.IntegerField(1, required=True)
+    id = messages.IntegerField(2, required=True)
+    answer = messages.BooleanField(3, required=True)
+
+
+class RequestInfoMessage(messages.Message):
+    id = messages.IntegerField(1)
+    sender = messages.IntegerField(2, required=True)
+    receiver = messages.IntegerField(3, required=True)
+    kind = messages.StringField(4)
+    role = messages.StringField(5)
+    caregiver = messages.IntegerField(6)
+    message = messages.StringField(7)
+    response = messages.MessageField(DefaultResponseMessage, 8)
+
+
+class UserRequestsMessage(messages.Message):
+    requests = messages.MessageField(RequestInfoMessage, 1, repeated=True)
+    response = messages.MessageField(DefaultResponseMessage, 2)
+
+
 @endpoints.api(name="recipexServerApi", version="v1",
                hostname="recipex-1281.appspot.com",
                allowed_client_ids=[endpoints.API_EXPLORER_CLIENT_ID],
@@ -332,16 +384,30 @@ class RecipexServerApi(remote.Service):
             return DefaultResponseMessage(code="404 Not Found", message="User not existent.")
 
         birth = datetime.strftime(user.birth, "%Y-%m-%d")
-        # TODO Aggiungere ritorno parametri mancanti
+
         usr_info = UserInfoMessage(email=user.email, name=user.name, surname=user.surname,
                                    birth=birth, sex=user.sex, city=user.city, address=user.address,
+                                   pc_physician=user.pc_physician, visiting_nurse=user.visiting_nurse,
                                    response=DefaultResponseMessage(code="200 OK",
                                                                    message="User info retrived."))
+        user_relatives = []
+        for relative in user.relatives:
+            user_relatives.append(relative)
+        usr_info.relatives = user_relatives
+
+        user_caregivers = []
+        for caregiver in user.caregivers:
+            user_relatives.append(caregiver)
+        usr_info.caregivers = user_caregivers
 
         caregiver = Caregiver.query(ancestor=user.key).get()
         if caregiver:
             usr_info.field = caregiver.field
             usr_info.years_exp = caregiver.years_exp
+            user_patients = []
+            for patient in user.patients:
+                user_patients.append(patient)
+            usr_info.patients = user_patients
 
         return usr_info
 
@@ -513,7 +579,7 @@ class RecipexServerApi(remote.Service):
             user.put()
             visiting_nurse_crgv.put()
         return DefaultResponseMessage(code="200 OK", message="First aid info updated.")
-
+    # TODO Fare Get measurements by kind
     @endpoints.method(UserIdMessage, UserMeasurementsMessage,
                       path="users/{id}/measurements", http_method="GET", name="user.getMeasurements")
     def get_measurements(self, request):
@@ -584,7 +650,7 @@ class RecipexServerApi(remote.Service):
         return UserMessagesMessage(user_messages=user_messages,
                                    response=DefaultResponseMessage(code="200 OK", message="Messages retrieved."))
 
-
+    # TODO Aggiungere API per fetch di richieste e per la gestione dei casi speciali (medico di base e infermiere domiciliare)
     @endpoints.method(AddMeasurementMessage, DefaultResponseMessage,
                       path="users/{user_id}/measurements", http_method="POST", name="measurements.addMeasurement")
     def add_measurement(self, request):
@@ -756,7 +822,7 @@ class RecipexServerApi(remote.Service):
             return MeasurementInfoMessage(response=DefaultResponseMessage(code="401 Unauthorized",
                                                                           message="User unauthorized."))
 
-        date_time = datetime.strftime(measurement.date_time)
+        date_time = datetime.strftime(measurement.date_time, "%Y-%m-%d %H:%M:%S")
 
         return MeasurementInfoMessage(date_time=date_time, kind=measurement.kind, systolic=measurement.systolic,
                                       diastolic=measurement.diastolic, bpm=measurement.bpm, spo2=measurement.spo2,
@@ -813,17 +879,17 @@ class RecipexServerApi(remote.Service):
         user = Key(User, request.user_id).get()
         if not user:
             return MessageInfoMessage(response=DefaultResponseMessage(code="404 Not Found",
-                                                                          message="User not existent."))
+                                                                      message="User not existent."))
 
         message = Key(User, request.id).get()
         if not message:
             return MessageInfoMessage(response=DefaultResponseMessage(code="404 Not Found",
-                                                                          message="Message not existent."))
+                                                                      message="Message not existent."))
 
         return MessageInfoMessage(sender=message.sender, receiver=message.receiver,
                                   message=message.message, hasRead=message.hasRead, measurement=message.measurement,
                                   response=DefaultResponseMessage(code="200 OK", message="Message info retrieved."))
-
+    # TODO Agiiungere controllo coerenza (user e' il receiver)
     @endpoints.method(MessageIdMessage, DefaultResponseMessage,
                       path="users/{user_id}/messages/{id}", http_method="PUT", name="message.deleteMessage")
     def read_message(self, request):
@@ -842,7 +908,144 @@ class RecipexServerApi(remote.Service):
         return DefaultResponseMessage(code="200 OK", message="Message read.")
 
     @endpoints.method(MessageIdMessage, DefaultResponseMessage,
-                       path="users/{user_id}/messages/{id}", http_method="DELETE", name="message.deleteMessage")
+                      path="users/{user_id}/messages/{id}", http_method="DELETE", name="message.deleteMessage")
+    def delete_message(self, request):
+        RecipexServerApi.authentication_check()
+
+        user = Key(User, request.user_id).get()
+        if not user:
+            return DefaultResponseMessage(code="404 Not Found", message="User not existent.")
+
+        message = Key(User, request.id).get()
+        if not message:
+            return DefaultResponseMessage(code="404 Not Found", message="Message not existent.")
+
+        message.key.delete()
+        return DefaultResponseMessage(code="200 OK", message="Message deleted.")
+
+    @endpoints.method(RequestSendMessage, DefaultResponseMessage,
+                      path="users/{receiver}/requests", http_method="POST", name="message.sendRequest")
+    def send_request(self, request):
+        RecipexServerApi.authentication_check()
+
+        sender = Key(User, request.sender).get()
+        if not sender:
+            return DefaultResponseMessage(code="404 Not Found", message="Sender not existent.")
+
+        receiver = Key(User, request.receiver).get()
+        if not receiver:
+            return DefaultResponseMessage(code="404 Not Found", message="Receiver not existent.")
+
+        if request.kind not in REQUEST_KIND:
+            return DefaultResponseMessage(code="412 Precondition Failed", message="Kind not existent")
+
+        caregiver_key = None
+        if request.kind == "CAREGIVER":
+            if request.role not in ROLE_TYPE:
+                return DefaultResponseMessage(code="412 Precondition Failed", message="Role not existent")
+            # Il paziente ha mandato la richiesta: il caregiver e' il receiver
+            if request.role == "PATIENT":
+                caregiver = Caregiver.query(ancestor=receiver.key).get()
+                if not caregiver:
+                    return DefaultResponseMessage(code="412 Precondition Failed", message="Receiver not a caregiver.")
+                if sender.key in caregiver.patients:
+                    return DefaultResponseMessage(code="412 Precondition Failed", message="Already a patient.")
+            else:
+                caregiver = Caregiver.query(ancestor=sender.key).get()
+                if not caregiver:
+                    return DefaultResponseMessage(code="412 Precondition Failed", message="Sender not a caregiver.")
+                if receiver.key in caregiver.patients:
+                    return DefaultResponseMessage(code="412 Precondition Failed", message="Already a patient.")
+            caregiver_key = caregiver.key
+        else:
+            if sender.key in receiver.relatives:
+                return DefaultResponseMessage(code="412 Precondition Failed", message="Already a relative.")
+
+        new_request = Message(father=receiver.key, sender=sender.key, receiver=receiver.key,
+                              kind=request.kind, message=request.message, role=request.role, caregiver=caregiver_key)
+
+        new_request.put()
+        return DefaultResponseMessage(code="201 Created", message="Request sent.", payload=new_request.key.id())
+
+    @endpoints.method(RequestIdMessage, RequestInfoMessage,
+                      path="users/{user_id}/requests/{id}", http_method="GET", name="message.getRequest")
+    def get_request(self, request):
+        RecipexServerApi.authentication_check()
+
+        user = Key(User, request.user_id).get()
+        if not user:
+            return RequestInfoMessage(response=DefaultResponseMessage(code="404 Not Found",
+                                                                      message="User not existent."))
+
+        usr_request = Key(User, request.id).get()
+        if not usr_request:
+            return RequestInfoMessage(response=DefaultResponseMessage(code="404 Not Found",
+                                                                      message="Request not existent."))
+
+        if usr_request.receiver != user.key:
+            return RequestInfoMessage(response=DefaultResponseMessage(code="412 Precondition Failed",
+                                                                      message="User not the receiver."))
+
+        return RequestInfoMessage(sender=usr_request.sender, receiver=usr_request.receiver, kind=usr_request.kind,
+                                  message=usr_request.message, role=usr_request.role, caregiver=usr_request.caregiver,
+                                  response=DefaultResponseMessage(code="200 OK", message="Request info retrieved."))
+
+    # TODO Fare ramo else, delete request e return
+    @endpoints.method(RequestAnswerMessage, DefaultResponseMessage,
+                      path="users/{user_id}/messages/{id}", http_method="PUT", name="message.deleteMessage")
+    def answer_request(self, request):
+        RecipexServerApi.authentication_check()
+
+        user = Key(User, request.user_id).get()
+        if not user:
+            return DefaultResponseMessage(code="404 Not Found", message="User not existent.")
+
+        usr_request = Key(Request, request.id).get()
+        if not usr_request:
+            return DefaultResponseMessage(code="404 Not Found", message="Request not existent.")
+
+        if usr_request.receiver != user.key:
+            return DefaultResponseMessage(code="412 Precondition Failed", message="User not the receiver.")
+
+        if request.answer:
+            if usr_request.kind == "RELATIVE":
+                sender = usr_request.sender.get()
+                if not sender:
+                    return DefaultResponseMessage(code="412 Precondition Failed", message="Sender not existent.")
+                user.relatives[sender.key.id()] = sender.key
+                sender.relatives[user.key.id()] = user.key
+                user.put()
+                sender.put()
+            else:
+                if usr_request.role == "PATIENT":
+                    patient = usr_request.sender.get()
+                    if not patient:
+                        return DefaultResponseMessage(code="412 Precondition Failed", message="Patient not existent.")
+                    caregiver = usr_request.caregiver.get()
+                    if not caregiver:
+                        return DefaultResponseMessage(code="412 Precondition Failed", message="Caregiver not existent.")
+                    patient.caregivers[caregiver.key.id()] = caregiver.key
+                    caregiver.patients[patient.key.id()] = patient.key
+                    patient.put()
+                    caregiver.put()
+                else:
+                    patient = usr_request.receiver.get()
+                    if not patient:
+                        return DefaultResponseMessage(code="412 Precondition Failed", message="Patient not existent.")
+                    caregiver = usr_request.caregiver.get()
+                    if not caregiver:
+                        return DefaultResponseMessage(code="412 Precondition Failed", message="Caregiver not existent.")
+                    patient.caregivers[caregiver.key.id()] = caregiver.key
+                    caregiver.patients[patient.key.id()] = patient.key
+                    patient.put()
+                    caregiver.put()
+
+        usr_request.key.delete()
+        return DefaultResponseMessage(code="200 OK", message="Answer received.")
+
+    # TODO Fare Delete method
+    @endpoints.method(MessageIdMessage, DefaultResponseMessage,
+                      path="users/{user_id}/messages/{id}", http_method="DELETE", name="message.deleteMessage")
     def delete_message(self, request):
         RecipexServerApi.authentication_check()
 

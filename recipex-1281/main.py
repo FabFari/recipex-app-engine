@@ -15,6 +15,7 @@
 # limitations under the License.
 #
 import endpoints
+from google.appengine.api import oauth
 from google.appengine.ext.ndb import Key
 from protorpc import messages
 from protorpc import message_types
@@ -35,10 +36,9 @@ REQUEST_KIND = ["RELATIVE", "CAREGIVER", "PC_PHYSICIAN", "V_NURSE"]
 ROLE_TYPE =["PATIENT", "CAREGIVER"]
 WEB_CLIENT_ID = "1077668244667-v42n91q6av4tlub6rh3dffbdqa0pncj0.apps.googleusercontent.com"
 ANDROID_CLIENT_ID = "1077668244667-j63dkcsh53g86cgul3vcv5afn1d0m6np.apps.googleusercontent.com"
-ANDROID_AUDIENCES = "1077668244667-j63dkcsh53g86cgul3vcv5afn1d0m6np.apps.googleusercontent.com"
+ANDROID_AUDIENCE = "1077668244667-j63dkcsh53g86cgul3vcv5afn1d0m6np.apps.googleusercontent.com"
 
 # DATASTORE CLASSES
-
 class User(ndb.Model):
     email = ndb.StringProperty(required=True)
     name = ndb.StringProperty(required=True)
@@ -120,20 +120,29 @@ class RegisterUserMessage(messages.Message):
 
 
 class UpdateUserMessage(messages.Message):
-    id = messages.IntegerField(1, required=True)
-    name = messages.StringField(2)
-    surname = messages.StringField(3)
-    birth = messages.StringField(4)
-    sex = messages.StringField(5)
-    city = messages.StringField(6)
-    address = messages.StringField(7)
-    field = messages.StringField(8)
-    years_exp = messages.IntegerField(9)
+    # id = messages.IntegerField(1, required=True)
+    name = messages.StringField(1)
+    surname = messages.StringField(2)
+    birth = messages.StringField(3)
+    sex = messages.StringField(4)
+    city = messages.StringField(5)
+    address = messages.StringField(6)
+    field = messages.StringField(7)
+    years_exp = messages.IntegerField(8)
 
 
+UPDATE_USER_MESSAGE = endpoints.ResourceContainer(UpdateUserMessage,
+                                                  id=messages.IntegerField(2, required=True))
+
+'''
 class UserIdMessage(messages.Message):
     id = messages.IntegerField(1, required=True)
     kind = messages.StringField(2)
+'''
+
+USER_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
+                                              id=messages.IntegerField(2, required=True),
+                                              kind=messages.StringField(3))
 
 
 class UserInfoMessage(messages.Message):
@@ -155,26 +164,30 @@ class UserInfoMessage(messages.Message):
 
 
 class AddMeasurementMessage(messages.Message):
-    user_id = messages.IntegerField(1, required=True)
-    date_time = messages.StringField(2, required=True)
-    kind = messages.StringField(3, required=True)
+    # user_id = messages.IntegerField(1, required=True)
+    date_time = messages.StringField(1, required=True)
+    kind = messages.StringField(2, required=True)
     # Blood Pressure (BP)
-    systolic = messages.IntegerField(4)
-    diastolic = messages.IntegerField(5)
+    systolic = messages.IntegerField(3)
+    diastolic = messages.IntegerField(4)
     # Heart Rate (HR)
-    bpm = messages.IntegerField(6)
+    bpm = messages.IntegerField(5)
     # Respiratory Rate (RR)
-    respirations = messages.IntegerField(7)
+    respirations = messages.IntegerField(6)
     # Pulse Oximetry (SpO2)
-    spo2 = messages.FloatField(8)
+    spo2 = messages.FloatField(7)
     # Blood Sugar (HGT)
-    hgt = messages.FloatField(9)
+    hgt = messages.FloatField(8)
     # Body Temperature (T)
-    degrees = messages.FloatField(10)
+    degrees = messages.FloatField(9)
     # Pain (P)
-    nrs = messages.IntegerField(11)
+    nrs = messages.IntegerField(10)
     # Cholesterol
-    chl_level = messages.IntegerField(12)
+    chl_level = messages.IntegerField(11)
+
+
+ADD_MEASUREMENT_MESSAGE = endpoints.ResourceContainer(AddMeasurementMessage,
+                                                      user_id = messages.IntegerField(2, required=True))
 
 
 class UpdateMeasurementMessage(messages.Message):
@@ -201,9 +214,21 @@ class UpdateMeasurementMessage(messages.Message):
     chl_level = messages.IntegerField(13)
 
 
+UPDATE_MEASUREMENT_MESSAGE = endpoints.ResourceContainer(UpdateMeasurementMessage,
+                                                         id=messages.IntegerField(2, required=True),
+                                                         user_id=messages.IntegerField(3, required=True))
+
+
+'''
 class MeasurementIdMessage(messages.Message):
     user_id = messages.IntegerField(1, required=True)
     id = messages.IntegerField(2, required=True)
+'''
+
+
+MEASUREMENT_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
+                                                     id=messages.IntegerField(2, required=True),
+                                                     user_id=messages.IntegerField(3, required=True))
 
 
 class MeasurementInfoMessage(messages.Message):
@@ -249,14 +274,23 @@ class UserFirstAidInfoMessage(messages.Message):
 
 class MessageSendMessage(messages.Message):
     sender = messages.IntegerField(1, required=True)
-    receiver = messages.IntegerField(2, required=True)
-    message = messages.StringField(3, required=True)
-    measurement = messages.IntegerField(4)
+    # receiver = messages.IntegerField(2, required=True)
+    message = messages.StringField(2, required=True)
+    measurement = messages.IntegerField(3)
 
 
+MESSAGE_SEND_MESSAGE = endpoints.ResourceContainer(MessageSendMessage,
+                                                   receiver=messages.IntegerField(2, required=True))
+
+'''
 class MessageIdMessage(messages.Message):
     user_id = messages.IntegerField(1, required=True)
     id = messages.IntegerField(2, required=True)
+'''
+
+MESSAGE_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
+                                                 user_id=messages.IntegerField(2, required=True),
+                                                 id=messages.IntegerField(3, required=True))
 
 
 class MessageInfoMessage(messages.Message):
@@ -276,23 +310,39 @@ class UserMessagesMessage(messages.Message):
 
 class RequestSendMessage(messages.Message):
     sender = messages.IntegerField(1, required=True)
-    receiver = messages.IntegerField(2, required=True)
-    kind = messages.StringField(3, required=True)
-    role = messages.StringField(4)
-    message = messages.StringField(5)
+    # receiver = messages.IntegerField(2, required=True)
+    kind = messages.StringField(2, required=True)
+    role = messages.StringField(3)
+    message = messages.StringField(4)
 
 
+REQUEST_SEND_MESSAGE = endpoints.ResourceContainer(RequestSendMessage,
+                                                   receiver=messages.IntegerField(2, required=True))
+
+
+'''
 class RequestIdMessage(messages.Message):
     user_id = messages.IntegerField(1, required=True)
     id = messages.IntegerField(2, required=True)
-    kind = messages.StringField(3)
-    sender_id = messages.IntegerField(4)
+    # kind = messages.StringField(3)
+    # sender_id = messages.IntegerField(4)
+'''
 
+REQUEST_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
+                                                 user_id=messages.IntegerField(2, required=True),
+                                                 id=messages.IntegerField(3, required=True))
 
+'''
 class RequestAnswerMessage(messages.Message):
     user_id = messages.IntegerField(1, required=True)
     id = messages.IntegerField(2, required=True)
     answer = messages.BooleanField(3, required=True)
+'''
+
+REQUEST_ANSWER_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
+                                                     user_id=messages.IntegerField(2, required=True),
+                                                     id=messages.IntegerField(3, required=True),
+                                                     answer=messages.BooleanField(4, required=True))
 
 
 class RequestInfoMessage(messages.Message):
@@ -318,13 +368,13 @@ class UserRequestsMessage(messages.Message):
                scopes=[endpoints.EMAIL_SCOPE])
 class RecipexServerApi(remote.Service):
     @endpoints.method(message_types.VoidMessage, DefaultResponseMessage,
-                      path='hello', http_method="GET", name="hello.helloWorld")
+                      path='recipexServerApi/hello', http_method="GET", name="hello.helloWorld")
     def hello_world(self, request):
         RecipexServerApi.authentication_check()
         return DefaultResponseMessage(message="Hello World!")
 
     @endpoints.method(RegisterUserMessage, DefaultResponseMessage,
-                      path="users", http_method="POST", name="users.registerUser")
+                      path="recipexServerApi/users", http_method="POST", name="users.registerUser")
     def register_user(self, request):
         RecipexServerApi.authentication_check()
 
@@ -344,10 +394,10 @@ class RecipexServerApi(remote.Service):
             new_caregiver = Caregiver(parent=user_key, field=request.field, years_exp=request.years_exp)
             new_caregiver.put()
 
-        return DefaultResponseMessage(code="201 Created", message="User registered.", payload=user_key.id())
+        return DefaultResponseMessage(code="201 Created", message="User registered.", payload=str(user_key.id()))
 
-    @endpoints.method(UpdateUserMessage, DefaultResponseMessage,
-                      path="users/{id}", http_method="PUT", name="user.updateUser")
+    @endpoints.method(UPDATE_USER_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{id}", http_method="PUT", name="user.updateUser")
     def update_user(self, request):
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -381,8 +431,8 @@ class RecipexServerApi(remote.Service):
 
         return DefaultResponseMessage(code="200 OK", message="User updated.")
 
-    @endpoints.method(UserIdMessage, UserInfoMessage,
-                      path="users/{id}", http_method="GET", name="user.getUser")
+    @endpoints.method(USER_ID_MESSAGE, UserInfoMessage,
+                      path="recipexServerApi/users/{id}", http_method="GET", name="user.getUser")
     def get_user(self, request):
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -417,8 +467,8 @@ class RecipexServerApi(remote.Service):
 
         return usr_info
 
-    @endpoints.method(UserIdMessage, DefaultResponseMessage,
-                      path="users/{id}", http_method="DELETE", name="user.deleteUser")
+    @endpoints.method(USER_ID_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{id}", http_method="DELETE", name="user.deleteUser")
     def delete_user(self, request):
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -453,7 +503,7 @@ class RecipexServerApi(remote.Service):
         return DefaultResponseMessage(code="200 OK", message="User deleted.")
 
     @endpoints.method(UserRelativeCaregiverMessage, DefaultResponseMessage,
-                      path="users/{id}/relatives", http_method="PATCH", name="user.updateRelatives")
+                      path="recipexServerApi/users/{id}/relatives", http_method="PATCH", name="user.updateRelatives")
     def update_relatives(self, request):
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -492,7 +542,7 @@ class RecipexServerApi(remote.Service):
         return DefaultResponseMessage(code="200 OK", message="Relatives updated.")
 
     @endpoints.method(UserRelativeCaregiverMessage, DefaultResponseMessage,
-                      path="users/{id}/caregivers", http_method="PATCH", name="user.updateCaregivers")
+                      path="recipexServerApi/users/{id}/caregivers", http_method="PATCH", name="user.updateCaregivers")
     def update_caregivers(self, request):
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -531,7 +581,7 @@ class RecipexServerApi(remote.Service):
         return DefaultResponseMessage(code="200 OK", message="Caregivers updated.")
 
     @endpoints.method(UserRelativeCaregiverMessage, DefaultResponseMessage,
-                      path="users/{id}/patients", http_method="PATCH", name="user.updatePatients")
+                      path="recipexServerApi/users/{id}/patients", http_method="PATCH", name="user.updatePatients")
     def update_patients(self, request):
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -574,7 +624,7 @@ class RecipexServerApi(remote.Service):
         return DefaultResponseMessage(code="200 OK", message="Patients updated.")
 
     @endpoints.method(UserFirstAidInfoMessage, DefaultResponseMessage,
-                      path="users/{id}/firstaidinfo", http_method="PATCH", name="user.updateFirstAidInfo")
+                      path="recipexServerApi/users/{id}/firstaidinfo", http_method="PATCH", name="user.updateFirstAidInfo")
     def update_first_aid_info(self, request):
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -610,8 +660,8 @@ class RecipexServerApi(remote.Service):
             visiting_nurse_crgv.put()
         return DefaultResponseMessage(code="200 OK", message="First aid info updated.")
 
-    @endpoints.method(UserIdMessage, UserMeasurementsMessage,
-                      path="users/{id}/measurements", http_method="GET", name="user.getMeasurements")
+    @endpoints.method(USER_ID_MESSAGE, UserMeasurementsMessage,
+                      path="recipexServerApi/users/{id}/measurements", http_method="GET", name="user.getMeasurements")
     def get_measurements(self, request):
         RecipexServerApi.authentication_check()
 
@@ -640,8 +690,8 @@ class RecipexServerApi(remote.Service):
         return UserMeasurementsMessage(measurements=user_measurements,
                                        response=DefaultResponseMessage(code="200 OK", message="Measurements retrieved."))
 
-    @endpoints.method(UserIdMessage, UserMessagesMessage,
-                      path="users/{id}/messages", http_method="GET", name="user.getMessages")
+    @endpoints.method(USER_ID_MESSAGE, UserMessagesMessage,
+                      path="recipexServerApi/users/{id}/messages", http_method="GET", name="user.getMessages")
     def get_messages(self, request):
         RecipexServerApi.authentication_check()
 
@@ -662,8 +712,8 @@ class RecipexServerApi(remote.Service):
         return UserMessagesMessage(user_messages=user_messages,
                                    response=DefaultResponseMessage(code="200 OK", message="Messages retrieved."))
 
-    @endpoints.method(UserIdMessage, UserMessagesMessage,
-                      path="users/{id}/unread-messages", http_method="", message="user.hasUnreadMessages")
+    @endpoints.method(USER_ID_MESSAGE, UserMessagesMessage,
+                      path="recipexServerApi/users/{id}/unread-messages", http_method="GET", name="user.hasUnreadMessages")
     def get_unread_messages(self, request):
         RecipexServerApi.authentication_check()
 
@@ -685,9 +735,9 @@ class RecipexServerApi(remote.Service):
         return UserMessagesMessage(user_messages=user_messages,
                                    response=DefaultResponseMessage(code="200 OK", message="Messages retrieved."))
 
-    @endpoints.method(UserIdMessage, UserRequestsMessage,
-                      path="users/{id}/requests", http_method="GET", name="user.getRequests")
-    def get_messages(self, request):
+    @endpoints.method(USER_ID_MESSAGE, UserRequestsMessage,
+                      path="recipexServerApi/users/{id}/requests", http_method="GET", name="user.getRequests")
+    def get_requests(self, request):
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.id).get()
@@ -707,8 +757,30 @@ class RecipexServerApi(remote.Service):
         return UserRequestsMessage(user_messages=user_requests,
                                    response=DefaultResponseMessage(code="200 OK", message="Requests retrieved."))
 
-    @endpoints.method(AddMeasurementMessage, DefaultResponseMessage,
-                      path="users/{user_id}/measurements", http_method="POST", name="measurements.addMeasurement")
+    @endpoints.method(USER_ID_MESSAGE, UserRequestsMessage,
+                      path="recipexServerApi/users/{id}/requests-sent", http_method="GET", name="user.getRequestsSent")
+    def get_requests_sent(self, request):
+        RecipexServerApi.authentication_check()
+
+        user = Key(User, request.id).get()
+        if not user:
+            return UserRequestsMessage(response=DefaultResponseMessage(code="404 Not Found",
+                                                                       message="User not existent."))
+
+        request_entities = Request.query(Request.sender == user.key)
+
+        user_requests = []
+
+        for request in request_entities:
+            user_requests.append(MessageInfoMessage(id=request.key.id(), receiver=request.receiver,
+                                                    sender=request.sender, message=request.message, kind=request.kind,
+                                                    role=request.role, caregiver=request.caregiver.key.id()))
+
+        return UserRequestsMessage(user_messages=user_requests,
+                                   response=DefaultResponseMessage(code="200 OK", message="Requests retrieved."))
+
+    @endpoints.method(ADD_MEASUREMENT_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{user_id}/measurements", http_method="POST", name="measurements.addMeasurement")
     def add_measurement(self, request):
         RecipexServerApi.authentication_check()
 
@@ -786,10 +858,10 @@ class RecipexServerApi(remote.Service):
 
         measurement_key = new_measurement.put()
 
-        return DefaultResponseMessage(code="201 Created", message="Measurement added.", payload=measurement_key.id())
+        return DefaultResponseMessage(code="201 Created", message="Measurement added.", payload=str(measurement_key.id()))
 
-    @endpoints.method(UpdateMeasurementMessage, DefaultResponseMessage,
-                      path="users/{user_id}/measurements/{id}", http_method="PUT", name="measurement.updateMeasurement")
+    @endpoints.method(UPDATE_MEASUREMENT_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{user_id}/measurements/{id}", http_method="PUT", name="measurement.updateMeasurement")
     def update_measurement(self, request):
         RecipexServerApi.authentication_check()
         measurement = Key(Measurement, request.id).get()
@@ -865,8 +937,8 @@ class RecipexServerApi(remote.Service):
         measurement.put()
         return DefaultResponseMessage(code="200 OK", message="Measurement updated.")
 
-    @endpoints.method(MeasurementIdMessage, MeasurementInfoMessage,
-                      path="users/{user_id}/measurements/{id}", http_method="GET", name="measurement.getMeasurement")
+    @endpoints.method(MEASUREMENT_ID_MESSAGE, MeasurementInfoMessage,
+                      path="recipexServerApi/users/{user_id}/measurements/{id}", http_method="GET", name="measurement.getMeasurement")
     def get_measurement(self, request):
         RecipexServerApi.authentication_check()
         measurement = Key(Measurement, request.id).get()
@@ -887,8 +959,8 @@ class RecipexServerApi(remote.Service):
                                       response=DefaultResponseMessage(code="200 OK",
                                                                       message="Measurement info retrieved."))
 
-    @endpoints.method(MeasurementIdMessage, DefaultResponseMessage,
-                      path="users/{user_id}/measurements/{id}", http_method="DELETE", name="measurement.deleteMeasurement")
+    @endpoints.method(MEASUREMENT_ID_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{user_id}/measurements/{id}", http_method="DELETE", name="measurement.deleteMeasurement")
     def delete_measurement(self, request):
         RecipexServerApi.authentication_check()
         measurement = Key(Measurement, request.id).get()
@@ -901,8 +973,8 @@ class RecipexServerApi(remote.Service):
         measurement.key.delete()
         return DefaultResponseMessage(code="200 OK", message="Measurement deleted.")
 
-    @endpoints.method(MessageSendMessage, DefaultResponseMessage,
-                      path="users/{receiver}/messages", http_method="POST", name="message.sendMessage")
+    @endpoints.method(MESSAGE_SEND_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{receiver}/messages", http_method="POST", name="message.sendMessage")
     def send_message(self, request):
         RecipexServerApi.authentication_check()
 
@@ -925,10 +997,10 @@ class RecipexServerApi(remote.Service):
                           hasRead=False, measurement=measurement_key)
 
         message.put()
-        return DefaultResponseMessage(code="201 Created", message="Message sent.", payload=measurement_key.id())
+        return DefaultResponseMessage(code="201 Created", message="Message sent.", payload=str(message.key.id()))
 
-    @endpoints.method(MessageIdMessage, MessageInfoMessage,
-                      path="users/{user_id}/messages/{id}", http_method="GET", name="message.getMessage")
+    @endpoints.method(MESSAGE_ID_MESSAGE, MessageInfoMessage,
+                      path="recipexServerApi/users/{user_id}/messages/{id}", http_method="GET", name="message.getMessage")
     def get_message(self, request):
         RecipexServerApi.authentication_check()
 
@@ -950,8 +1022,8 @@ class RecipexServerApi(remote.Service):
                                   message=message.message, hasRead=message.hasRead, measurement=message.measurement,
                                   response=DefaultResponseMessage(code="200 OK", message="Message info retrieved."))
 
-    @endpoints.method(MessageIdMessage, DefaultResponseMessage,
-                      path="users/{user_id}/messages/{id}", http_method="PUT", name="message.deleteMessage")
+    @endpoints.method(MESSAGE_ID_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{user_id}/messages/{id}", http_method="PUT", name="message.readMessage")
     def read_message(self, request):
         RecipexServerApi.authentication_check()
 
@@ -970,8 +1042,8 @@ class RecipexServerApi(remote.Service):
         message.put()
         return DefaultResponseMessage(code="200 OK", message="Message read.")
 
-    @endpoints.method(MessageIdMessage, DefaultResponseMessage,
-                      path="users/{user_id}/messages/{id}", http_method="DELETE", name="message.deleteMessage")
+    @endpoints.method(MESSAGE_ID_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{user_id}/messages/{id}", http_method="DELETE", name="message.deleteMessage")
     def delete_message(self, request):
         RecipexServerApi.authentication_check()
 
@@ -989,8 +1061,8 @@ class RecipexServerApi(remote.Service):
         message.key.delete()
         return DefaultResponseMessage(code="200 OK", message="Message deleted.")
 
-    @endpoints.method(RequestSendMessage, DefaultResponseMessage,
-                      path="users/{receiver}/requests", http_method="POST", name="message.sendRequest")
+    @endpoints.method(REQUEST_SEND_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{receiver}/requests", http_method="POST", name="request.sendRequest")
     def send_request(self, request):
         RecipexServerApi.authentication_check()
 
@@ -1003,12 +1075,17 @@ class RecipexServerApi(remote.Service):
             return DefaultResponseMessage(code="404 Not Found", message="Receiver not existent.")
 
         if request.kind not in REQUEST_KIND:
-            return DefaultResponseMessage(code="412 Precondition Failed", message="Kind not existent")
+            return DefaultResponseMessage(code="412 Precondition Failed", message="Kind not existent.")
+
+        old_request = Request.query(ancestor=receiver.key).filter(ndb.AND(Request.sender == sender.key,
+                                                                          Request.kind == request.kind)).get()
+        if not old_request:
+            return DefaultResponseMessage(code="412 Precondition Failed", message="Request already existent.")
 
         caregiver_key = None
         if request.kind == "CAREGIVER" or request.kind == "PC_PHYSICIAN" or request.kind == "V_NURSE":
             if request.role not in ROLE_TYPE:
-                return DefaultResponseMessage(code="412 Precondition Failed", message="Role not existent")
+                return DefaultResponseMessage(code="412 Precondition Failed", message="Role not existent.")
             # Il paziente ha mandato la richiesta: il caregiver e' il receiver
             if request.role == "PATIENT":
                 caregiver = Caregiver.query(ancestor=receiver.key).get()
@@ -1031,10 +1108,10 @@ class RecipexServerApi(remote.Service):
                               kind=request.kind, message=request.message, role=request.role, caregiver=caregiver_key)
 
         new_request.put()
-        return DefaultResponseMessage(code="201 Created", message="Request sent.", payload=new_request.key.id())
+        return DefaultResponseMessage(code="201 Created", message="Request sent.", payload=str(new_request.key.id()))
 
-    @endpoints.method(RequestIdMessage, RequestInfoMessage,
-                      path="users/{user_id}/requests/{id}", http_method="GET", name="message.getRequest")
+    @endpoints.method(REQUEST_ID_MESSAGE, RequestInfoMessage,
+                      path="recipexServerApi/users/{user_id}/requests/{id}", http_method="GET", name="request.getRequest")
     def get_request(self, request):
         RecipexServerApi.authentication_check()
 
@@ -1056,8 +1133,8 @@ class RecipexServerApi(remote.Service):
                                   message=usr_request.message, role=usr_request.role, caregiver=usr_request.caregiver,
                                   response=DefaultResponseMessage(code="200 OK", message="Request info retrieved."))
 
-    @endpoints.method(RequestAnswerMessage, DefaultResponseMessage,
-                      path="users/{user_id}/messages/{id}", http_method="PUT", name="message.deleteMessage")
+    @endpoints.method(REQUEST_ANSWER_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{user_id}/requests/{id}", http_method="PUT", name="request.answerRequest")
     def answer_request(self, request):
         RecipexServerApi.authentication_check()
 
@@ -1104,9 +1181,9 @@ class RecipexServerApi(remote.Service):
         usr_request.key.delete()
         return DefaultResponseMessage(code="200 OK", message="Answer received.")
 
-    @endpoints.method(MessageIdMessage, DefaultResponseMessage,
-                      path="users/{user_id}/messages/{id}", http_method="DELETE", name="message.deleteMessage")
-    def delete_message(self, request):
+    @endpoints.method(REQUEST_ID_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{user_id}/requests/{id}", http_method="DELETE", name="request.deleteRequest")
+    def delete_request(self, request):
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.user_id).get()
@@ -1135,6 +1212,12 @@ class RecipexServerApi(remote.Service):
         current_user = endpoints.get_current_user()
         if current_user is None:
             raise endpoints.UnauthorizedException('Invalid token.')
+
+        # current_user2 = oauth.get_current_user('https://www.googleapis.com/auth/userinfo.email')
+
+        # logging.info(current_user.__dict__)
+        # logging.info(current_user2.__dict__)
+        # logging.info(endpoints.API_EXPLORER_CLIENT_ID)
 
         if current_user.email() != "recipex.app@gmail.com":
             raise endpoints.UnauthorizedException('User Unauthorized')

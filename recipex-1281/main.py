@@ -56,6 +56,7 @@ class User(ndb.Model):
     sex = ndb.StringProperty()
     city = ndb.StringProperty()
     address = ndb.StringProperty()
+    personal_nums = ndb.StringProperty(repeated=True)
     relatives = ndb.PickleProperty(compressed=True, default={})
     pc_physician = ndb.KeyProperty()
     visiting_nurse = ndb.KeyProperty()
@@ -66,6 +67,9 @@ class Caregiver(ndb.Model):
     field = ndb.StringProperty(required=True)
     years_exp = ndb.IntegerProperty()
     place = ndb.StringProperty()
+    business_nums = ndb.StringProperty(repeated=True)
+    bio = ndb.StringProperty()
+    available = ndb.StringProperty()
     patients = ndb.PickleProperty(compressed=True, default={})
 
 
@@ -126,9 +130,13 @@ class RegisterUserMessage(messages.Message):
     sex = messages.StringField(5)
     city = messages.StringField(6)
     address = messages.StringField(7)
-    field = messages.StringField(8)
-    years_exp = messages.IntegerField(9)
-    place = messages.StringField(10)
+    personal_nums = messages.StringField(8, repeated=True)
+    field = messages.StringField(9)
+    years_exp = messages.IntegerField(10)
+    place = messages.StringField(11)
+    business_nums = messages.StringField(12, repeated=True)
+    bio = messages.StringField(13)
+    available = messages.StringField(14)
 
 
 class UpdateUserMessage(messages.Message):
@@ -139,9 +147,13 @@ class UpdateUserMessage(messages.Message):
     sex = messages.StringField(4)
     city = messages.StringField(5)
     address = messages.StringField(6)
-    field = messages.StringField(7)
-    years_exp = messages.IntegerField(8)
-    place = messages.StringField(9)
+    personal_nums = messages.StringField(7, repeated=True)
+    field = messages.StringField(8)
+    years_exp = messages.IntegerField(9)
+    place = messages.StringField(10)
+    business_nums = messages.StringField(11, repeated=True)
+    bio = messages.StringField(12)
+    available = messages.StringField(13)
 
 
 UPDATE_USER_MESSAGE = endpoints.ResourceContainer(UpdateUserMessage,
@@ -166,15 +178,19 @@ class UserInfoMessage(messages.Message):
     sex = messages.StringField(5)
     city = messages.StringField(6)
     address = messages.StringField(7)
-    relatives = messages.IntegerField(8, repeated=True)
-    pc_physician = messages.IntegerField(9)
-    visiting_nurse = messages.IntegerField(10)
-    caregivers = messages.IntegerField(11, repeated=True)
-    field = messages.StringField(12)
-    place = messages.StringField(13)
-    years_exp = messages.IntegerField(14)
-    patients = messages.IntegerField(15, repeated=True)
-    response = messages.MessageField(DefaultResponseMessage, 16)
+    personal_nums = messages.StringField(8, repeated=True)
+    relatives = messages.IntegerField(9, repeated=True)
+    pc_physician = messages.IntegerField(10)
+    visiting_nurse = messages.IntegerField(11)
+    caregivers = messages.IntegerField(12, repeated=True)
+    field = messages.StringField(13)
+    place = messages.StringField(14)
+    years_exp = messages.IntegerField(15)
+    business_nums = messages.StringField(16, repeated=True)
+    bio = messages.StringField(17)
+    available = messages.StringField(18)
+    patients = messages.IntegerField(19, repeated=True)
+    response = messages.MessageField(DefaultResponseMessage, 20)
 
 
 class AddMeasurementMessage(messages.Message):
@@ -277,6 +293,7 @@ class UserMeasurementsMessage(messages.Message):
     response = messages.MessageField(DefaultResponseMessage, 2)
 
 
+'''
 class UserRelativeCaregiverMessage(messages.Message):
     id = messages.IntegerField(1, required=True)
     to_add = messages.IntegerField(2, repeated=True)
@@ -287,6 +304,7 @@ class UserFirstAidInfoMessage(messages.Message):
     id = messages.IntegerField(1, required=True)
     pc_physician = messages.IntegerField(2)
     visiting_nurse = messages.IntegerField(3)
+'''
 
 
 class MessageSendMessage(messages.Message):
@@ -380,7 +398,7 @@ class UserRequestsMessage(messages.Message):
 
 @endpoints.api(name="recipexServerApi", version="v1",
                hostname="recipex-1281.appspot.com",
-               allowed_client_ids=[endpoints.API_EXPLORER_CLIENT_ID, WEB_CLIENT_ID, ANDROID_CLIENT_ID],
+               allowed_client_ids=[WEB_CLIENT_ID, ANDROID_CLIENT_ID],
                audiences=[ANDROID_AUDIENCE],
                scopes=[endpoints.EMAIL_SCOPE])
 class RecipexServerApi(remote.Service):
@@ -398,18 +416,25 @@ class RecipexServerApi(remote.Service):
         if User.query(User.email == request.email).count() > 0:
             return DefaultResponseMessage(code="412 Precondition Failed", message="User already existent.")
 
+        if not request.field:
+            if request.years_exp or request.place or request.business_nums or request.bio or request.available:
+                return DefaultResponseMessage(code="412 Precondition Failed", message="Field is missing.")
+
         try:
             birth = datetime.strptime(request.birth, "%Y-%m-%d")
         except ValueError:
             return DefaultResponseMessage(code="400 Bad Request", message="Bad birth format.")
 
-        new_user = User(email=request.email, name=request.name, surname=request.surname, birth=birth,
-                        sex=request.sex, city=request.city, address=request.address, relatives={}, caregivers={})
+        new_user = User(email=request.email, name=request.name, surname=request.surname,
+                        birth=birth, sex=request.sex, city=request.city, address=request.address,
+                        personal_nums=request.personal_nums, relatives={}, caregivers={})
         user_key = new_user.put()
 
+        # Field is the required field to be a caregiver
         if request.field:
             new_caregiver = Caregiver(parent=user_key, field=request.field, years_exp=request.years_exp,
-                                      place=request.place, patients={})
+                                      place=request.place, business_nums=request.business_nums,
+                                      bio=request.bio, available=request.available, patients={})
             new_caregiver.put()
 
         return DefaultResponseMessage(code="201 Created", message="User registered.", payload=str(user_key.id()))
@@ -447,9 +472,15 @@ class RecipexServerApi(remote.Service):
                 user.address = request.address
             else:
                 user.address = None
+        if request.personal_nums is not None:
+            if request.personal_nums:
+                user.personal_nums = request.personal_nums
+            else:
+                user.personal_nums = []
         user.put()
 
-        if request.field or request.years_exp:
+        if request.field or request.years_exp or request.place or\
+           request.business_nums or request.bio or request.available:
             caregiver = Caregiver.query(ancestor=user.key).get()
             if not caregiver:
                 return DefaultResponseMessage(code="412 Not Found", message="User not a caregiver.")
@@ -468,6 +499,21 @@ class RecipexServerApi(remote.Service):
                     caregiver.place = request.place
                 else:
                     caregiver.place = None
+            if request.business_nums is not None:
+                if request.business_nums:
+                    caregiver.business_nums = request.business_nums
+                else:
+                    caregiver.business_nums = []
+            if request.bio is not None:
+                if request.bio:
+                    caregiver.bio = request.bio
+                else:
+                    caregiver.bio = None
+            if request.available is not None:
+                if request.available:
+                    caregiver.available = request.available
+                else:
+                    caregiver.available = None
             caregiver.put()
 
         return DefaultResponseMessage(code="200 OK", message="User updated.")
@@ -483,7 +529,8 @@ class RecipexServerApi(remote.Service):
         birth = datetime.strftime(user.birth, "%Y-%m-%d")
 
         usr_info = UserInfoMessage(email=user.email, name=user.name, surname=user.surname,
-                                   birth=birth, sex=user.sex, city=user.city, address=user.address,
+                                   birth=birth, sex=user.sex, city=user.city,
+                                   address=user.address, personal_nums=user.personal_nums,
                                    response=DefaultResponseMessage(code="200 OK",
                                                                    message="User info retrived."))
 
@@ -510,6 +557,9 @@ class RecipexServerApi(remote.Service):
             usr_info.field = caregiver.field
             usr_info.years_exp = caregiver.years_exp
             usr_info.place = caregiver.place
+            usr_info.business_nums = caregiver.business_nums
+            usr_info.bio = caregiver.bio
+            usr_info.available = caregiver.available
             if caregiver.patients:
                 user_patients = []
                 for patient in caregiver.patients.keys():
@@ -529,46 +579,65 @@ class RecipexServerApi(remote.Service):
         if user.pc_physician is not None:
             pc_physician = user.pc_physician.get()
             if pc_physician is not None:
-                del pc_physician.patients[user.key]
+                if user.key.id() in pc_physician.patients.keys():
+                    del pc_physician.patients[user.key.id()]
+                    pc_physician.put()
         if user.visiting_nurse is not None:
             visiting_nurse = user.visiting_nurse.get()
             if visiting_nurse is not None:
-                del visiting_nurse.patients[user.key]
+                if user.key.id() in visiting_nurse.patients.keys():
+                    del visiting_nurse.patients[user.key.id()]
+                    visiting_nurse.put()
         if user.caregivers:
-            for caregiver_key in user.caregivers:
-                caregiver = caregiver_key.get()
+            for caregiver_key in user.caregivers.keys():
+                caregiver = user.caregivers[caregiver_key].get()
                 if caregiver is not None:
-                    del caregiver.patients[user.key]
+                    if user.key.id() in caregiver.patients.keys():
+                        del caregiver.patients[user.key.id()]
+                        caregiver.put()
         if user.relatives:
-            for relative_key in user.relatives:
-                relative = relative_key.get()
+            for relative_key in user.relatives.keys():
+                relative = user.relatives[relative_key].get()
                 if relative is not None:
-                    del relative.relatives[user.key]
+                    if user.key.id() in relative.relatives.keys():
+                        del relative.relatives[user.key.id()]
+                        relative.put()
         measurements = Measurement.query(ancestor=user.key)
-        if not measurements:
+        if measurements:
             for measurement in measurements:
                 measurement.key.delete()
-        usr_messages = Message.query(ancestor=user.key)
-        if not usr_messages:
-            for message in usr_messages:
+        usr_messages_rcvd = Message.query(ancestor=user.key)
+        if usr_messages_rcvd:
+            for message in usr_messages_rcvd:
                 message.key.delete()
-        requests = Request.query(ancestor=user.key)
-        if not requests:
-            for request in requests:
+        usr_messages_sent = Message.query(Message.sender == user.key)
+        if usr_messages_sent:
+            for message in usr_messages_sent:
+                message.key.delete()
+        requests_rcvd = Request.query(ancestor=user.key)
+        if requests_rcvd:
+            for request in requests_rcvd:
+                request.key.delete()
+        requests_sent = Request.query(Request.sender == user.key)
+        if requests_sent:
+            for request in requests_sent:
                 request.key.delete()
 
         caregiver = Caregiver.query(ancestor=user.key).get()
         if caregiver is not None:
             if caregiver.patients:
-                for patient_key in user.patients:
-                    patient = patient_key.get()
+                for patient_key in caregiver.patients.keys():
+                    patient = caregiver.patients[patient_key].get()
                     if patient is not None:
-                        del patient.caregiver[caregiver.key]
+                        if user.key.id() in patient.caregivers.keys():
+                            del patient.caregivers[caregiver.key.id()]
+                            patient.put()
             caregiver.key.delete()
 
         user.key.delete()
         return DefaultResponseMessage(code="200 OK", message="User deleted.")
 
+    '''
     @endpoints.method(UserRelativeCaregiverMessage, DefaultResponseMessage,
                       path="recipexServerApi/users/{id}/relatives", http_method="PATCH", name="user.updateRelatives")
     def update_relatives(self, request):
@@ -581,18 +650,18 @@ class RecipexServerApi(remote.Service):
         if not user.relatives:
             relatives = user.relatives
         # TODO Gestire la responsabilita doppia sui dizionari (Paziente-Familiare)
-        '''
-        for relative in range(len(request.set)):
-            # If already present, means remove
-            if relative in relatives:
-                del relatives[relative]
-            # If not present, means add
-            else:
-                relative_key = Key(User, relative)
-                if not relative_key.get():
-                    return DefaultResponseMessage(code="404 Not Found", message="User(s) not existent.")
-                relatives[relative] = relative_key
-        '''
+
+        # for relative in range(len(request.set)):
+        #     If already present, means remove
+        #     if relative in relatives:
+        #         del relatives[relative]
+        #     If not present, means add
+        #     else:
+        #         relative_key = Key(User, relative)
+        #         if not relative_key.get():
+        #             return DefaultResponseMessage(code="404 Not Found", message="User(s) not existent.")
+        #     relatives[relative] = relative_key
+
         for relative in range(len(request.to_add)):
             if relative not in relatives:
                 relative_key = Key(User, relative)
@@ -620,18 +689,18 @@ class RecipexServerApi(remote.Service):
         if not user.caregivers:
             caregivers = user.caregivers
         # TODO Gestire la responsabilita doppia trai dizionari (Paziente-Caregiver)
-        '''
-        for caregiver in range(len(request.set)):
-            # If already present, means remove
-            if caregiver in caregivers:
-                del caregivers[caregiver]
-            # If not present, means add
-            else:
-                caregiver_key = Key(User, caregiver)
-                if not caregiver_key.get():
-                    return DefaultResponseMessage(code="404 Not Found", message="Caregiver(s) not existent.")
-            caregivers[caregiver] = caregiver_key
-        '''
+
+        # for caregiver in range(len(request.set)):
+        #     If already present, means remove
+        #     if caregiver in caregivers:
+        #         del caregivers[caregiver]
+        #     If not present, means add
+        #     else:
+        #         caregiver_key = Key(User, caregiver)
+        #         if not caregiver_key.get():
+        #             return DefaultResponseMessage(code="404 Not Found", message="Caregiver(s) not existent.")
+        #     caregivers[caregiver] = caregiver_key
+
         for caregiver in range(len(request.to_add)):
             if caregiver not in caregivers:
                 caregiver_key = Key(Caregiver, caregiver)
@@ -662,19 +731,19 @@ class RecipexServerApi(remote.Service):
         patients = {}
         if not caregiver.patients:
             patients = caregiver.patients
+
         # TODO Gestire la responsabilita doppia trai dizionari (Paziente-Caregiver)
-        '''
-        for caregiver in range(len(request.set)):
-            # If already present, means remove
-            if caregiver in caregivers:
-                del caregivers[caregiver]
-            # If not present, means add
-            else:
-                caregiver_key = Key(User, caregiver)
-                if not caregiver_key.get():
-                    return DefaultResponseMessage(code="404 Not Found", message="Caregiver(s) not existent.")
-            caregivers[caregiver] = caregiver_key
-        '''
+        # for caregiver in range(len(request.set)):
+        #     If already present, means remove
+        #     if caregiver in caregivers:
+        #         del caregivers[caregiver]
+        #     If not present, means add
+        #    else:
+        #        caregiver_key = Key(User, caregiver)
+        #         if not caregiver_key.get():
+        #             return DefaultResponseMessage(code="404 Not Found", message="Caregiver(s) not existent.")
+        #    caregivers[caregiver] = caregiver_key
+
         for patient in range(len(request.to_add)):
             if patient not in patients:
                 patient_key = Key(User, patient)
@@ -726,6 +795,7 @@ class RecipexServerApi(remote.Service):
             user.put()
             visiting_nurse_crgv.put()
         return DefaultResponseMessage(code="200 OK", message="First aid info updated.")
+    '''
 
     @endpoints.method(USER_ID_MESSAGE, UserMeasurementsMessage,
                       path="recipexServerApi/users/{id}/measurements", http_method="GET", name="user.getMeasurements")
@@ -777,15 +847,20 @@ class RecipexServerApi(remote.Service):
         user_messages = []
 
         for message in messages_entities:
-            user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender,
-                                                    receiver=message.receiver, message=message.message,
-                                                    hasRead=message.hasRead, measurement=message.measurement))
+            if message.measurement:
+                user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender.id(),
+                                                        receiver=message.receiver.id(), message=message.message,
+                                                        hasRead=message.hasRead, measurement=message.measurement.id()))
+            else:
+                user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender.id(),
+                                                        receiver=message.receiver.id(), message=message.message,
+                                                        hasRead=message.hasRead))
 
         return UserMessagesMessage(user_messages=user_messages,
                                    response=DefaultResponseMessage(code="200 OK", message="Messages retrieved."))
 
     @endpoints.method(USER_ID_MESSAGE, UserMessagesMessage,
-                      path="recipexServerApi/users/{id}/unread-messages", http_method="GET", name="user.hasUnreadMessages")
+                      path="recipexServerApi/users/{id}/unread-messages", http_method="GET", name="user.getUnreadMessages")
     def get_unread_messages(self, request):
         RecipexServerApi.authentication_check()
 
@@ -800,9 +875,15 @@ class RecipexServerApi(remote.Service):
 
         for message in messages_entities:
             if not message.hasRead:
-                user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender,
-                                                        receiver=message.receiver, message=message.message,
-                                                        hasRead=message.hasRead, measurement=message.measurement))
+                if message.measurement:
+                    user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender.id(),
+                                                            receiver=message.receiver.id(), message=message.message,
+                                                            hasRead=message.hasRead,
+                                                            measurement=message.measurement.id()))
+                else:
+                    user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender.id(),
+                                                            receiver=message.receiver.id(), message=message.message,
+                                                            hasRead=message.hasRead))
 
         return UserMessagesMessage(user_messages=user_messages,
                                    response=DefaultResponseMessage(code="200 OK", message="Messages retrieved."))
@@ -877,7 +958,7 @@ class RecipexServerApi(remote.Service):
                                    response=DefaultResponseMessage(code="200 OK", message="Requests retrieved."))
 
     @endpoints.method(ADD_MEASUREMENT_MESSAGE, DefaultResponseMessage,
-                      path="recipexServerApi/users/{user_id}/measurements", http_method="POST", name="measurements.addMeasurement")
+                      path="recipexServerApi/users/{user_id}/measurements", http_method="POST", name="measurement.addMeasurement")
     def add_measurement(self, request):
         RecipexServerApi.authentication_check()
 
@@ -1097,13 +1178,13 @@ class RecipexServerApi(remote.Service):
             return DefaultResponseMessage(code="404 Not Found", message="Receiver not existent.")
 
         measurement_key = None
-        if not request.measurement:
-            measurement_key = Key(Measurement, request.measurement)
+        if request.measurement:
+            measurement_key = Key(User, receiver.key.id(), Measurement, request.measurement)
             measurement = measurement_key.get()
             if not measurement:
                 return DefaultResponseMessage(code="404 Not Found", message="Measurement not existent.")
 
-        message = Message(father=receiver.key, sender=sender.key, receiver=receiver.key, message=request.message,
+        message = Message(parent=receiver.key, sender=sender.key, receiver=receiver.key, message=request.message,
                           hasRead=False, measurement=measurement_key)
 
         message.put()
@@ -1119,7 +1200,7 @@ class RecipexServerApi(remote.Service):
             return MessageInfoMessage(response=DefaultResponseMessage(code="404 Not Found",
                                                                       message="User not existent."))
 
-        message = Key(User, request.id).get()
+        message = Key(User, request.user_id, Message, request.id).get()
         if not message:
             return MessageInfoMessage(response=DefaultResponseMessage(code="404 Not Found",
                                                                       message="Message not existent."))
@@ -1128,8 +1209,8 @@ class RecipexServerApi(remote.Service):
             return MessageInfoMessage(response=DefaultResponseMessage(code="412 Precondition Failed",
                                                                       message="User not the receiver."))
 
-        return MessageInfoMessage(sender=message.sender, receiver=message.receiver,
-                                  message=message.message, hasRead=message.hasRead, measurement=message.measurement,
+        return MessageInfoMessage(sender=message.sender.id(), receiver=message.receiver.id(),
+                                  message=message.message, hasRead=message.hasRead, measurement=message.measurement.id(),
                                   response=DefaultResponseMessage(code="200 OK", message="Message info retrieved."))
 
     @endpoints.method(MESSAGE_ID_MESSAGE, DefaultResponseMessage,
@@ -1141,7 +1222,7 @@ class RecipexServerApi(remote.Service):
         if not user:
             return DefaultResponseMessage(code="404 Not Found", message="User not existent.")
 
-        message = Key(User, request.id).get()
+        message = Key(User, request.user_id, Message, request.id).get()
         if not message:
             return DefaultResponseMessage(code="404 Not Found", message="Message not existent.")
 
@@ -1161,7 +1242,7 @@ class RecipexServerApi(remote.Service):
         if not user:
             return DefaultResponseMessage(code="404 Not Found", message="User not existent.")
 
-        message = Key(User, request.id).get()
+        message = Key(User, request.user_id, Message, request.id).get()
         if not message:
             return DefaultResponseMessage(code="404 Not Found", message="Message not existent.")
 
@@ -1198,17 +1279,26 @@ class RecipexServerApi(remote.Service):
                 return DefaultResponseMessage(code="412 Precondition Failed", message="Role not existent.")
             # Il paziente ha mandato la richiesta: il caregiver e' il receiver
             if request.role == "PATIENT":
-                patient_key = sender.key
+                patient = sender
                 caregiver = Caregiver.query(ancestor=receiver.key).get()
                 if not caregiver:
                     return DefaultResponseMessage(code="412 Precondition Failed", message="Receiver not a caregiver.")
             else:
-                patient_key = receiver.key
+                patient = receiver
                 caregiver = Caregiver.query(ancestor=sender.key).get()
                 if not caregiver:
                     return DefaultResponseMessage(code="412 Precondition Failed", message="Sender not a caregiver.")
-            if caregiver.patients and patient_key.id() in caregiver.patients.keys():
-                return DefaultResponseMessage(code="412 Precondition Failed", message="Already a patient.")
+            # if caregiver.patients and patient.key.id() in caregiver.patients.keys():
+            #     return DefaultResponseMessage(code="412 Precondition Failed", message="Already a patient.")
+            if request.kind == "CAREGIVER":
+                if caregiver.key.id() in patient.caregivers.keys():
+                    return DefaultResponseMessage(code="412 Precondition Failed", message="Already a caregiver.")
+            elif request.kind == "PC_PHYSICIAN":
+                if patient.pc_physician == caregiver.key:
+                    return DefaultResponseMessage(code="412 Precondition Failed", message="Already the pc_physician.")
+            else:
+                if patient.visiting_nurse == caregiver.key:
+                    return DefaultResponseMessage(code="412 Precondition Failed", message="Already the visiting Nurse.")
             caregiver_key = caregiver.key
         else:
             if receiver.relatives and sender.key.id() in receiver.relatives.keys():
@@ -1337,7 +1427,7 @@ class RecipexServerApi(remote.Service):
         # logging.info(current_user2.__dict__)
         # logging.info(endpoints.API_EXPLORER_CLIENT_ID)
 
-        if current_user.email() != "recipex.app@gmail.com":
-            raise endpoints.UnauthorizedException('User Unauthorized')
+        # if current_user.email() != "recipex.app@gmail.com":
+            # raise endpoints.UnauthorizedException('User Unauthorized')
 
 APPLICATION = endpoints.api_server([RecipexServerApi])

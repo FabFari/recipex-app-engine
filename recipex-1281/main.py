@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
 import endpoints
 from google.appengine.api import oauth
 from google.appengine.ext.ndb import Key
@@ -26,6 +27,7 @@ from google.appengine.ext import ndb
 from datetime import datetime
 
 import logging
+import credentials
 
 # TODO Controlla bene tutti i set: quando inserisci devi prima controllare... e non lo fai quasi mai!!!
 
@@ -34,9 +36,7 @@ import logging
 MEASUREMENTS_KIND = ["BP", "HR", "RR", "SpO2", "HGT", "TMP", "PAIN", "CHL"]
 REQUEST_KIND = ["RELATIVE", "CAREGIVER", "PC_PHYSICIAN", "V_NURSE"]
 ROLE_TYPE =["PATIENT", "CAREGIVER"]
-WEB_CLIENT_ID = "1077668244667-v42n91q6av4tlub6rh3dffbdqa0pncj0.apps.googleusercontent.com"
-ANDROID_CLIENT_ID = "1077668244667-j63dkcsh53g86cgul3vcv5afn1d0m6np.apps.googleusercontent.com"
-ANDROID_AUDIENCE = "1077668244667-j63dkcsh53g86cgul3vcv5afn1d0m6np.apps.googleusercontent.com"
+
 
 
 '''
@@ -47,12 +47,14 @@ class DictPickleProperty(ndb.PickleProperty):
         super(DictPickleProperty, self).__init__(**kwds)
 '''
 
+
 # DATASTORE CLASSES
 class User(ndb.Model):
     email = ndb.StringProperty(required=True)
     name = ndb.StringProperty(required=True)
     surname = ndb.StringProperty(required=True)
     birth = ndb.DateProperty(required=True)
+    pic = ndb.StringProperty()
     sex = ndb.StringProperty()
     city = ndb.StringProperty()
     address = ndb.StringProperty()
@@ -127,16 +129,17 @@ class RegisterUserMessage(messages.Message):
     name = messages.StringField(2, required=True)
     surname = messages.StringField(3, required=True)
     birth = messages.StringField(4, required=True)
-    sex = messages.StringField(5)
-    city = messages.StringField(6)
-    address = messages.StringField(7)
-    personal_nums = messages.StringField(8, repeated=True)
-    field = messages.StringField(9)
-    years_exp = messages.IntegerField(10)
-    place = messages.StringField(11)
-    business_nums = messages.StringField(12, repeated=True)
-    bio = messages.StringField(13)
-    available = messages.StringField(14)
+    pic = messages.StringField(5)
+    sex = messages.StringField(6)
+    city = messages.StringField(7)
+    address = messages.StringField(8)
+    personal_nums = messages.StringField(9, repeated=True)
+    field = messages.StringField(10)
+    years_exp = messages.IntegerField(11)
+    place = messages.StringField(12)
+    business_nums = messages.StringField(13, repeated=True)
+    bio = messages.StringField(14)
+    available = messages.StringField(15)
 
 
 class UpdateUserMessage(messages.Message):
@@ -175,22 +178,23 @@ class UserInfoMessage(messages.Message):
     name = messages.StringField(2)
     surname = messages.StringField(3)
     birth = messages.StringField(4)
-    sex = messages.StringField(5)
-    city = messages.StringField(6)
-    address = messages.StringField(7)
-    personal_nums = messages.StringField(8, repeated=True)
-    relatives = messages.IntegerField(9, repeated=True)
-    pc_physician = messages.IntegerField(10)
-    visiting_nurse = messages.IntegerField(11)
-    caregivers = messages.IntegerField(12, repeated=True)
-    field = messages.StringField(13)
-    place = messages.StringField(14)
-    years_exp = messages.IntegerField(15)
-    business_nums = messages.StringField(16, repeated=True)
-    bio = messages.StringField(17)
-    available = messages.StringField(18)
-    patients = messages.IntegerField(19, repeated=True)
-    response = messages.MessageField(DefaultResponseMessage, 20)
+    pic = messages.StringField(5)
+    sex = messages.StringField(6)
+    city = messages.StringField(7)
+    address = messages.StringField(8)
+    personal_nums = messages.StringField(9, repeated=True)
+    relatives = messages.IntegerField(10, repeated=True)
+    pc_physician = messages.IntegerField(11)
+    visiting_nurse = messages.IntegerField(12)
+    caregivers = messages.IntegerField(13, repeated=True)
+    field = messages.StringField(14)
+    place = messages.StringField(15)
+    years_exp = messages.IntegerField(16)
+    business_nums = messages.StringField(17, repeated=True)
+    bio = messages.StringField(18)
+    available = messages.StringField(19)
+    patients = messages.IntegerField(20, repeated=True)
+    response = messages.MessageField(DefaultResponseMessage, 21)
 
 
 class AddMeasurementMessage(messages.Message):
@@ -398,14 +402,18 @@ class UserRequestsMessage(messages.Message):
 
 @endpoints.api(name="recipexServerApi", version="v1",
                hostname="recipex-1281.appspot.com",
-               allowed_client_ids=[WEB_CLIENT_ID, ANDROID_CLIENT_ID],
-               audiences=[ANDROID_AUDIENCE],
+               allowed_client_ids=[credentials.WEB_CLIENT_ID,
+                                   credentials.ANDROID_CLIENT_ID],
+               audiences=[credentials.ANDROID_AUDIENCE],
                scopes=[endpoints.EMAIL_SCOPE])
 class RecipexServerApi(remote.Service):
     @endpoints.method(message_types.VoidMessage, DefaultResponseMessage,
                       path='recipexServerApi/hello', http_method="GET", name="hello.helloWorld")
     def hello_world(self, request):
         RecipexServerApi.authentication_check()
+
+        logging.info(datetime.date().now())
+
         return DefaultResponseMessage(message="Hello World!")
 
     @endpoints.method(RegisterUserMessage, DefaultResponseMessage,
@@ -425,7 +433,7 @@ class RecipexServerApi(remote.Service):
         except ValueError:
             return DefaultResponseMessage(code="400 Bad Request", message="Bad birth format.")
 
-        new_user = User(email=request.email, name=request.name, surname=request.surname,
+        new_user = User(email=request.email, name=request.name, surname=request.surname, pic=request.pic,
                         birth=birth, sex=request.sex, city=request.city, address=request.address,
                         personal_nums=request.personal_nums, relatives={}, caregivers={})
         user_key = new_user.put()
@@ -529,7 +537,7 @@ class RecipexServerApi(remote.Service):
         birth = datetime.strftime(user.birth, "%Y-%m-%d")
 
         usr_info = UserInfoMessage(email=user.email, name=user.name, surname=user.surname,
-                                   birth=birth, sex=user.sex, city=user.city,
+                                   pic=user.pic, birth=birth, sex=user.sex, city=user.city,
                                    address=user.address, personal_nums=user.personal_nums,
                                    response=DefaultResponseMessage(code="200 OK",
                                                                    message="User info retrived."))
@@ -1426,8 +1434,9 @@ class RecipexServerApi(remote.Service):
         # logging.info(current_user.__dict__)
         # logging.info(current_user2.__dict__)
         # logging.info(endpoints.API_EXPLORER_CLIENT_ID)
+        # logging.info(current_user.email())
 
         # if current_user.email() != "recipex.app@gmail.com":
-            # raise endpoints.UnauthorizedException('User Unauthorized')
+        #     raise endpoints.UnauthorizedException('User Unauthorized')
 
 APPLICATION = endpoints.api_server([RecipexServerApi])

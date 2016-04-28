@@ -213,7 +213,7 @@ class UserInfoMessage(messages.Message):
     bio = messages.StringField(19)
     available = messages.StringField(20)
     # patients = messages.IntegerField(21, repeated=True)
-    patients = messages.IntegerField(UserMainInfoMessage, 21, repeated=True)
+    patients = messages.MessageField(UserMainInfoMessage, 21, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 22)
 
 
@@ -1527,9 +1527,9 @@ class RecipexServerApi(remote.Service):
         # logging.info(endpoints.API_EXPLORER_CLIENT_ID)
         # logging.info(current_user.email())
 
-        if current_user.email().lower() not in ["recipex.app@gmail.com",
-                                                "fabriziofarinacci@gmail.com",
-                                                "saraveterini@gmail.com"]:
-            raise endpoints.UnauthorizedException('User Unauthorized')
+        # if current_user.email().lower() not in ["recipex.app@gmail.com",
+        #                                         "fabriziofarinacci@gmail.com",
+        #                                         "saraveterini@gmail.com"]:
+        #    raise endpoints.UnauthorizedException('User Unauthorized')
 
 APPLICATION = endpoints.api_server([RecipexServerApi])

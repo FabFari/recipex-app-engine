@@ -1,0 +1,6 @@
+indexes:
+- kind: Measurement
+  ancestor: yes
+  properties:
+  - name: date_time
+    direction: desc

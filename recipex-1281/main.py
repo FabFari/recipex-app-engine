@@ -138,6 +138,7 @@ class Prescription(ndb.Model):
     recipe = ndb.BooleanProperty(required=True)
     pil = ndb.StringProperty()
     caregiver = ndb.KeyProperty()
+    seen = ndb.BooleanProperty()
 
 
 # MESSAGE CLASSES
@@ -501,7 +502,8 @@ class PrescriptionInfoMessage(messages.Message):
     caregiver_name = messages.StringField(13)
     caregiver_surname = messages.StringField(14)
     caregiver_job = messages.StringField(15)
-    response = messages.MessageField(DefaultResponseMessage, 16)
+    seen = messages.BooleanField(16)
+    response = messages.MessageField(DefaultResponseMessage, 17)
 
 
 class UserPrescriptionsMessage(messages.Message):
@@ -1352,6 +1354,54 @@ class RecipexServerApi(remote.Service):
                                                     requests=user_prescriptions,
                                                     response=DefaultResponseMessage(code=OK,
                                                                                     message="Prescriptions retrieved.")))
+
+    @endpoints.method(USER_ID_MESSAGE, UserPrescriptionsMessage,
+                      path="recipexServerApi/users/{id}/unseen-prescriptions", http_method="GET",
+                      name="user.getUnseenPrescriptions")
+    def get_unseen_prescriptions(self, request):
+        user = Key(User, request.id).get()
+        if not user:
+            return RecipexServerApi.return_response(code=NOT_FOUND,
+                                                    message="User not existent.",
+                                                    response=UserPrescriptionsMessage(
+                                                        response=DefaultResponseMessage(code=NOT_FOUND,
+                                                                                        message="User not existent.")))
+
+        user_prescriptions = []
+        prescriptions = Prescription.query(ancestor=user.key)
+        for prescription in prescriptions:
+            if not prescriptions.seen:
+                prescription_info = PrescriptionInfoMessage(name=prescription.name,
+                                                            active_ingr_key=prescription.active_ingr_key,
+                                                            active_ingr_name=prescription.active_ingr_name,
+                                                            kind=prescription.kind,
+                                                            dose=prescription.dose, units=prescription.units,
+                                                            quantity=prescription.quantity,
+                                                            recipe=prescription.recipe, pil=prescription.pil,
+                                                            response=DefaultResponseMessage(code=OK,
+                                                                                            message="Prescription info retrieved."))
+
+        if prescription.caregiver is not None:
+            user_caregiver = prescription.caregiver.parent().get()
+            prescription_info.caregiver_user_id = user_caregiver.key.id()
+            prescription_info.caregiver_id = prescription.caregiver.id()
+            prescription_info.caregiver_name = user_caregiver.name
+            prescription_info.caregiver_surname = user_caregiver.surname
+            if user.pc_physician == prescription.caregiver:
+                prescription_info.caregiver_job = "PC_PHYSICIAN"
+            elif user.visiting_nurse == prescription.caregiver:
+                prescription_info.caregiver_job = "V_NURSE"
+            else:
+                prescription_info.caregiver_job = "CAREGIVER"
+
+        user_prescriptions.append(prescription_info)
+
+        return RecipexServerApi.return_response(code=OK,
+                                                message="Unseen prescriptions retrieved.",
+                                                response=UserPrescriptionsMessage(
+                                                    requests=user_prescriptions,
+                                                    response=DefaultResponseMessage(code=OK,
+                                                                                    message="Unseen prescriptions retrieved.")))
 
     @endpoints.method(ADD_MEASUREMENT_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/measurements", http_method="POST", name="measurement.addMeasurement")
@@ -2257,9 +2307,13 @@ class RecipexServerApi(remote.Service):
         prescription_info = PrescriptionInfoMessage(name=prescription.name, active_ingr_key=prescription.active_ingr_key,
                                                     active_ingr_name=prescription.active_ingr_name, kind=prescription.kind,
                                                     dose=prescription.dose, units=prescription.units, quantity=prescription.quantity,
-                                                    recipe=prescription.recipe, pil=prescription.pil,
+                                                    recipe=prescription.recipe, pil=prescription.pil, seen=prescription.seen,
                                                     response=DefaultResponseMessage(code=OK,
                                                                                     message="Prescription info retrieved."))
+
+        if not prescription.seen:
+            prescription.seen = True
+            prescription.put()
 
         if prescription.caregiver is not None:
             user_caregiver = prescription.caregiver.parent().get()

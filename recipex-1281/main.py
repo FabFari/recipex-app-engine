@@ -37,8 +37,8 @@ import credentials
 
 MEASUREMENTS_KIND = ["BP", "HR", "RR", "SpO2", "HGT", "TMP", "PAIN", "CHL"]
 REQUEST_KIND = ["RELATIVE", "CAREGIVER", "PC_PHYSICIAN", "V_NURSE"]
-ROLE_TYPE =["PATIENT", "CAREGIVER"]
-
+ROLE_TYPE = ["PATIENT", "CAREGIVER"]
+PRESCRIPTION_KIND = ["PILL", "SACHET", "VIAL", "OTHER"]
 
 
 '''
@@ -77,7 +77,6 @@ class Caregiver(ndb.Model):
     patients = ndb.PickleProperty(compressed=True, default={})
 
 
-# TODO Aggiungere tabella Terapia?
 class Measurement(ndb.Model):
     date_time = ndb.DateTimeProperty(required=True)
     kind = ndb.StringProperty(required=True)
@@ -118,8 +117,24 @@ class Request(ndb.Model):
     message = ndb.StringProperty()
 
 
-# MESSAGE CLASSES
+class ActiveIngredient(ndb.Model):
+    name = ndb.StringProperty(required=True)
 
+
+# TODO Aggiungere Orario e Giorni di assunzione su Google Calendar
+class Prescription(ndb.Model):
+    name = ndb.StringProperty(required=True)
+    active_ingr_key = ndb.KeyProperty(required=True)
+    active_ingr_name = ndb.StringProperty(required=True)
+    kind = ndb.StringProperty(required=True)
+    dose = ndb.IntegerProperty(required=True)
+    units = ndb.StringProperty(required=True)
+    quantity = ndb.IntegerProperty(required=True)
+    recipe = ndb.BooleanProperty(required=True)
+    pil = ndb.StringProperty()
+
+
+# MESSAGE CLASSES
 class DefaultResponseMessage(messages.Message):
     code = messages.StringField(1)
     message = messages.StringField(2)
@@ -426,6 +441,55 @@ class RequestInfoMessage(messages.Message):
 class UserRequestsMessage(messages.Message):
     requests = messages.MessageField(RequestInfoMessage, 1, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 2)
+
+
+class ActiveIngredientMessage(messages.Message):
+    name = messages.StringField(1, required=True)
+    id = messages.IntegerField(2)
+    response = messages.MessageField(DefaultResponseMessage, 3)
+
+
+ACTIVE_INGREDIENT_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
+                                                           id=messages.StringField(1, required=True))
+
+
+class ActiveIngredientsMessage(messages.Message):
+    active_ingredients = messages.MessageField(ActiveIngredientMessage, 1, repeated=True)
+    response = messages.MessageField(DefaultResponseMessage, 2)
+
+
+class AddPrescriptionMessage(messages.Message):
+    name = messages.StringField(1, required=True)
+    active_ingredient = messages.IntegerField(2, required=True)
+    kind = messages.StringField(3, required=True)
+    dose = messages.IntegerField(4, required=True)
+    units = messages.StringField(5, required=True)
+    quantity = messages.IntegerField(6, required=True)
+    recipe = messages.BooleanField(7, required=True)
+    pil = messages.StringField(8)
+
+
+ADD_PRESCRIPTION_MESSAGE = endpoints.ResourceContainer(AddMeasurementMessage,
+                                                       id=messages.IntegerField(2, required=True))
+
+
+PRESCRIPTION_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
+                                                      id=messages.IntegerField(2, required=True),
+                                                      user_id=messages.IntegerField(3, required=True))
+
+
+class PrescriptionInfoMessage(messages.Message):
+    id = messages.IntegerField(1)
+    name = messages.StringField(2)
+    active_ingr_key = messages.IntegerField(3)
+    active_ingr_name = messages.StringField(4)
+    kind = messages.StringField(5)
+    dose = messages.IntegerField(6)
+    units = messages.StringField(7)
+    quantity = messages.IntegerField(8)
+    recipe = messages.BooleanField(9)
+    pil = messages.StringField(10)
+    response = messages.MessageField(11)
 
 
 @endpoints.api(name="recipexServerApi", version="v1",
@@ -1979,6 +2043,155 @@ class RecipexServerApi(remote.Service):
                                                 message="Request deleted.",
                                                 response=DefaultResponseMessage(code="200 OK",
                                                                                 message="Request deleted."))
+
+    @endpoints.method(ActiveIngredientMessage, DefaultResponseMessage,
+                      path="recipexServerApi/active_ingredients", http_method="POST", name="activeIngredient.addActiveIngredient")
+    def add_active_ingredient(self, request):
+        RecipexServerApi.authentication_check()
+        active_ingredient = ActiveIngredient.query(ActiveIngredient.name == request.name).get()
+        if active_ingredient:
+            return RecipexServerApi.return_response(code="412 Precondition Failed",
+                                                    message="Active ingredient already existent.",
+                                                    response=DefaultResponseMessage(code="412 Precondition Failed",
+                                                                                    message="Active ingredient already existent."))
+
+        active_ingredient_key = ActiveIngredient(name=request.name).put()
+
+        return RecipexServerApi.return_response(code="201 Created",
+                                                message="Active ingredient added.",
+                                                response=DefaultResponseMessage(code="201 Created",
+                                                                                message="Active ingredient added.",
+                                                                                payload=str(active_ingredient_key.id())))
+
+    @endpoints.method(ACTIVE_INGREDIENT_ID_MESSAGE, ActiveIngredientMessage,
+                      path="recipexServerApi/active_ingredients/{id}", http_method="GET", name="activeIngredient.getActiveIngredient")
+    def get_active_ingredient(self, request):
+        RecipexServerApi.authentication_check()
+        active_ingredient = Key(ActiveIngredient, request.id).get()
+        if not active_ingredient:
+            return RecipexServerApi.return_response(code="404 Not Found",
+                                                    message="Active ingredient not existent.",
+                                                    response=ActiveIngredientMessage(
+                                                        response=DefaultResponseMessage(code="404 Not Found",
+                                                                                        message="Active ingredient not existent.")))
+
+        return RecipexServerApi.return_response(code="200 OK",
+                                                message="Active ingredient info retrieved.",
+                                                response=ActiveIngredientMessage(
+                                                    name = active_ingredient.name,
+                                                    response=DefaultResponseMessage(code="200 OK",
+                                                                                    message="Active ingredient info retrieved.")))
+
+    @endpoints.method(ACTIVE_INGREDIENT_ID_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/active_ingredients/{id}", http_method="DELETE", name="activeIngredient.deleteActiveIngredient")
+    def delete_active_ingredient(self, request):
+        RecipexServerApi.authentication_check()
+        active_ingredient = Key(ActiveIngredient, request.id).get()
+        if not active_ingredient:
+            return RecipexServerApi.return_response(code="404 Not Found",
+                                                    message="Active ingredient not existent.",
+                                                    response=DefaultResponseMessage(code="404 Not Found",
+                                                                                    message="Active ingredient not existent."))
+
+        active_ingredient.key.delete()
+
+        return RecipexServerApi.return_response(code="200 OK",
+                                                message="Active ingredient deleted.",
+                                                response=DefaultResponseMessage(code="200 OK",
+                                                                                message="Active ingredient deleted."))
+
+    @endpoints.method(message_types.VoidMessage, ActiveIngredientsMessage,
+                      path="recipexServerApi/active_ingredients", http_method="GET", name="activeIngredient.getActiveIngredients")
+    def get_active_ingredients(self, request):
+        RecipexServerApi.authentication_check()
+
+        active_ingredients_query = ActiveIngredient.query()
+
+        active_ingredients = []
+        for active_ingredient in active_ingredients_query:
+            active_ingredients.append(ActiveIngredientMessage(id=active_ingredient.key.id(),
+                                                              name=active_ingredient.name))
+
+        return RecipexServerApi.return_response(code="200 OK",
+                                                message="Active ingredients retrieved.",
+                                                response=ActiveIngredientsMessage(
+                                                    active_ingredients=active_ingredients,
+                                                    response=DefaultResponseMessage(code="200 OK",
+                                                                                    message="Active ingredients retrieved.")))
+
+    @endpoints.method(ADD_PRESCRIPTION_MESSAGE, DefaultResponseMessage,
+                      path="recipexServerApi/users/{id}/prescriptions", http_method="POST", name="prescription.addPrescription")
+    def add_prescription(self, request):
+        RecipexServerApi.authentication_check()
+        user = Key(User, request.id).get()
+        if not user:
+            return RecipexServerApi.return_response(code="404 Not Found",
+                                                    message="User not existent.",
+                                                    response=DefaultResponseMessage(code="404 Not Found",
+                                                                                    message="User not existent."))
+
+        active_ingredient = Key(ActiveIngredient, request.active_ingredient).get()
+        if not active_ingredient:
+            return RecipexServerApi.return_response(code="404 Not Found",
+                                                    message="Active ingredient not existent.",
+                                                    response=DefaultResponseMessage(code="404 Not Found",
+                                                                                    message="Active ingredient not existent."))
+
+        if request.kind not in PRESCRIPTION_KIND:
+            return RecipexServerApi.return_response(code="412 Precondition Failed",
+                                                    message="Prescription kind not existent.",
+                                                    response=DefaultResponseMessage(code="412 Precondition Failed",
+                                                                                    message="Prescription kind not existent."))
+
+        if request.dose < 0 or request.quantity < 0:
+            return RecipexServerApi.return_response(code="412 Precondition Failed",
+                                                    message="Input parameter(s) out of range.",
+                                                    response=DefaultResponseMessage(code="412 Precondition Failed",
+                                                                                    message="Input parameter(s) out of range."))
+
+        prescription = Prescription(parent=user.key, name=request.name, active_ingr_key=active_ingredient.key,
+                                    active_ingr_name=active_ingredient.name, kind=request.kind, dose=request.dose,
+                                    units=request.units, quantity=request.quantity, recipe=request.recipe,
+                                    pil=request.pil)
+
+        prescription_key = prescription.put()
+        return RecipexServerApi.return_response(code="201 Created",
+                                                message="Prescription added.",
+                                                response=DefaultResponseMessage(code="201 Created",
+                                                                                message="Prescription added.",
+                                                                                payload=str(prescription_key.id())))
+
+    @endpoints.method(PRESCRIPTION_ID_MESSAGE, PrescriptionInfoMessage,
+                      path="recipexServerApi/users/{user_id}/prescriptions/{id}", http_method="POST",
+                      name="prescription.getPrescription")
+    def get_prescription(self, request):
+        RecipexServerApi.authentication_check()
+        user = Key(User, request.user_id).get()
+        if not user:
+            return RecipexServerApi.return_response(code="404 Not Found",
+                                                    message="User not existent.",
+                                                    response=PrescriptionInfoMessage(
+                                                        response=DefaultResponseMessage(code="404 Not Found",
+                                                                                    message="User not existent.")))
+
+        prescription = Key(Prescription, request.id).get()
+        if not prescription:
+            return RecipexServerApi.return_response(code="404 Not Found",
+                                                    message="Prescription not existent.",
+                                                    response=PrescriptionInfoMessage(
+                                                        response=DefaultResponseMessage(code="404 Not Found",
+                                                                                        message="Prescription not existent.")))
+
+        prescription_info = PrescriptionInfoMessage(name=prescription.name, active_ingr_key=prescription.active_ingr_key,
+                                                    active_ingr_name=prescription.active_ingr_name, kind=prescription.kind,
+                                                    dose=prescription.dose, units=prescription.units, quantity=prescription.quantity,
+                                                    recipe=prescription.recipe, pil=prescription.pil,
+                                                    response=DefaultResponseMessage(code="200 OK",
+                                                                                    message="Prescription info retrieved."))
+
+        return RecipexServerApi.return_response(code="200 OK",
+                                                message="Prescription info retrieved.",
+                                                response=prescription_info)
 
     @classmethod
     def authentication_check(cls):

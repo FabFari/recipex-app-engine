@@ -501,10 +501,10 @@ class PrescriptionInfoMessage(messages.Message):
     caregiver_name = messages.StringField(13)
     caregiver_surname = messages.StringField(14)
     caregiver_job = messages.StringField(15)
-    response = messages.MessageField(16)
+    response = messages.MessageField(DefaultResponseMessage, 16)
 
 
-class UserPrescriptionsMessage(ndb.Model):
+class UserPrescriptionsMessage(messages.Message):
     prescriptions = messages.MessageField(PrescriptionInfoMessage, 1, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 2)
 

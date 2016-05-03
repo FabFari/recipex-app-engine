@@ -61,8 +61,8 @@ class User(ndb.Model):
     name = ndb.StringProperty(required=True)
     surname = ndb.StringProperty(required=True)
     birth = ndb.DateProperty(required=True)
-    pic = ndb.StringProperty()
-    sex = ndb.StringProperty()
+    pic = ndb.StringProperty(required=True)
+    sex = ndb.StringProperty(required=True)
     city = ndb.StringProperty()
     address = ndb.StringProperty()
     personal_num = ndb.StringProperty()
@@ -153,8 +153,8 @@ class RegisterUserMessage(messages.Message):
     name = messages.StringField(2, required=True)
     surname = messages.StringField(3, required=True)
     birth = messages.StringField(4, required=True)
-    pic = messages.StringField(5)
-    sex = messages.StringField(6)
+    pic = messages.StringField(5, required=True)
+    sex = messages.StringField(6, required=True)
     city = messages.StringField(7)
     address = messages.StringField(8)
     personal_num = messages.StringField(9)
@@ -196,9 +196,10 @@ class UserIdMessage(messages.Message):
 USER_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
                                               id=messages.IntegerField(2, required=True),
                                               # is_caregiver=messages.BooleanField(3),
-                                              fetch=messages.IntegerField(3),
-                                              kind=messages.StringField(4),
-                                              date_time=messages.StringField(5))
+                                              profile_id=messages.IntegerField(3),
+                                              fetch=messages.IntegerField(4),
+                                              kind=messages.StringField(5),
+                                              date_time=messages.StringField(6))
 
 
 USER_UPDATE_RELATION_INFO = endpoints.ResourceContainer(message_types.VoidMessage,
@@ -245,6 +246,14 @@ class UserInfoMessage(messages.Message):
     # patients = messages.IntegerField(21, repeated=True)
     patients = messages.MessageField(UserMainInfoMessage, 21, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 22)
+
+
+class UserRelationsMessage(messages.Message):
+    is_relative = messages.BooleanField(1)
+    is_pc_physician = messages.BooleanField(2)
+    is_visiting_nurse = messages.BooleanField(3)
+    is_caregiver = messages.BooleanField(4)
+    is_patient = messages.BooleanField(5)
 
 
 class AddMeasurementMessage(messages.Message):
@@ -1058,7 +1067,7 @@ class RecipexServerApi(remote.Service):
                     patient.pc_physician = None
                 if patient.visiting_nurse != caregiver.key and\
                    caregiver.key.id() not in patient.caregivers.keys():
-                     del caregiver.patients[patient.key.id()]
+                    del caregiver.patients[patient.key.id()]
             elif request.kind == "V_NURSE":
                 if patient.visiting_nurse == caregiver.key:
                     patient.visiting_nurse = None
@@ -1381,20 +1390,20 @@ class RecipexServerApi(remote.Service):
                                                             response=DefaultResponseMessage(code=OK,
                                                                                             message="Prescription info retrieved."))
 
-        if prescription.caregiver is not None:
-            user_caregiver = prescription.caregiver.parent().get()
-            prescription_info.caregiver_user_id = user_caregiver.key.id()
-            prescription_info.caregiver_id = prescription.caregiver.id()
-            prescription_info.caregiver_name = user_caregiver.name
-            prescription_info.caregiver_surname = user_caregiver.surname
-            if user.pc_physician == prescription.caregiver:
-                prescription_info.caregiver_job = "PC_PHYSICIAN"
-            elif user.visiting_nurse == prescription.caregiver:
-                prescription_info.caregiver_job = "V_NURSE"
-            else:
-                prescription_info.caregiver_job = "CAREGIVER"
+                if prescription.caregiver is not None:
+                    user_caregiver = prescription.caregiver.parent().get()
+                    prescription_info.caregiver_user_id = user_caregiver.key.id()
+                    prescription_info.caregiver_id = prescription.caregiver.id()
+                    prescription_info.caregiver_name = user_caregiver.name
+                    prescription_info.caregiver_surname = user_caregiver.surname
+                    if user.pc_physician == prescription.caregiver:
+                        prescription_info.caregiver_job = "PC_PHYSICIAN"
+                    elif user.visiting_nurse == prescription.caregiver:
+                        prescription_info.caregiver_job = "V_NURSE"
+                    else:
+                        prescription_info.caregiver_job = "CAREGIVER"
 
-        user_prescriptions.append(prescription_info)
+                user_prescriptions.append(prescription_info)
 
         return RecipexServerApi.return_response(code=OK,
                                                 message="Unseen prescriptions retrieved.",
@@ -1402,6 +1411,56 @@ class RecipexServerApi(remote.Service):
                                                     requests=user_prescriptions,
                                                     response=DefaultResponseMessage(code=OK,
                                                                                     message="Unseen prescriptions retrieved.")))
+
+    @endpoints.method(USER_ID_MESSAGE, UserRelationsMessage,
+                      path="recipexServerApi/users/{id}/relations/{profile_id}", http_method="GET",
+                      name="user.checkUserRelations")
+    def check_user_relations(self, request):
+        user = Key(User, request.id).get()
+        if not user:
+            return RecipexServerApi.return_response(code=NOT_FOUND,
+                                                    message="User not existent.",
+                                                    response=UserRelationsMessage(
+                                                        response=DefaultResponseMessage(code=NOT_FOUND,
+                                                                                        message="User not existent.")))
+
+        profile_user = Key(User, request.id).get()
+        if not profile_user:
+            return RecipexServerApi.return_response(code=NOT_FOUND,
+                                                    message="Profile user not existent.",
+                                                    response=UserRelationsMessage(
+                                                        response=DefaultResponseMessage(code=NOT_FOUND,
+                                                                                        message="Profile user not existent.")))
+
+        answer = UserRequestsMessage(is_pc_physician=False, is_visiting_nurse=False,
+                                     is_caregiver=False, is_patient=False)
+
+        if profile_user.key.id() in user.relatives.keys():
+            answer.is_relative = True
+        else:
+            answer.is_relative = False
+
+        profile_caregiver = Caregiver.query(ancestor=profile_user.key).get()
+
+        if profile_caregiver is not None:
+            if user.pc_physician == profile_caregiver.key:
+                answer.is_pc_physician = True
+            if user.visiting_nurse == profile_caregiver.key:
+                answer.is_visiting_nurse = True
+            if user.caregiver == profile_caregiver.key:
+                answer.is_caregiver = True
+
+        user_caregiver = Caregiver.query(ancestor=user.key).get()
+
+        if user_caregiver is not None:
+            if profile_user.key in user_caregiver.patients.keys():
+                answer.is_patient = True
+
+        return RecipexServerApi.return_response(code=OK,
+                                                message="Relations info retrieved.",
+                                                response=UserRelationsMessage(
+                                                    response=DefaultResponseMessage(code=OK,
+                                                                                    message="Relations info retrieved.")))
 
     @endpoints.method(ADD_MEASUREMENT_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/measurements", http_method="POST", name="measurement.addMeasurement")

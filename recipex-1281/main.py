@@ -1337,10 +1337,13 @@ class RecipexServerApi(remote.Service):
                                                         active_ingr_name=prescription.active_ingr_name,
                                                         kind=prescription.kind,
                                                         dose=prescription.dose, units=prescription.units,
-                                                        quantity=prescription.quantity,
+                                                        quantity=prescription.quantity, seen=prescription.seen,
                                                         recipe=prescription.recipe, pil=prescription.pil,
                                                         response=DefaultResponseMessage(code=OK,
                                                                                         message="Prescription info retrieved."))
+
+            prescription.seen = True
+            prescription.put()
 
             if prescription.caregiver is not None:
                 user_caregiver = prescription.caregiver.parent().get()
@@ -2316,7 +2319,7 @@ class RecipexServerApi(remote.Service):
         prescription = Prescription(parent=user.key, name=request.name, active_ingr_key=active_ingredient.key,
                                     active_ingr_name=active_ingredient.name, kind=request.kind, dose=request.dose,
                                     units=request.units, quantity=request.quantity, recipe=request.recipe,
-                                    pil=request.pil)
+                                    pil=request.pil, seen=True)
 
         if request.caregiver:
             user_caregiver_key = Key(User, request.caregiver).get()
@@ -2334,6 +2337,7 @@ class RecipexServerApi(remote.Service):
                                                                                         message="User not a patient."))
 
             prescription.caregiver = caregiver_entity.key()
+            prescription.seen = False
 
         prescription_key = prescription.put()
         return RecipexServerApi.return_response(code=CREATED,

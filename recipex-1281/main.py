@@ -102,7 +102,7 @@ class Measurement(ndb.Model):
     # Pain (P)
     nrs = ndb.IntegerProperty()
     # Cholesterol (CHL)
-    chl_level = ndb.IntegerProperty()
+    chl_level = ndb.FloatProperty()
 
 
 class Message(ndb.Model):
@@ -276,7 +276,7 @@ class AddMeasurementMessage(messages.Message):
     # Pain (P)
     nrs = messages.IntegerField(9)
     # Cholesterol
-    chl_level = messages.IntegerField(10)
+    chl_level = messages.FloatField(10)
     note = messages.StringField(11)
 
 
@@ -305,7 +305,7 @@ class UpdateMeasurementMessage(messages.Message):
     # Pain (P)
     nrs = messages.IntegerField(9)
     # Cholesterol
-    chl_level = messages.IntegerField(10)
+    chl_level = messages.FloatField(10)
     note = messages.StringField(11)
 
 
@@ -346,7 +346,7 @@ class MeasurementInfoMessage(messages.Message):
     # Pain (P)
     nrs = messages.IntegerField(11)
     # Cholesterol
-    chl_level = messages.IntegerField(12)
+    chl_level = messages.FloatField(12)
     note = messages.StringField(13)
     response = messages.MessageField(DefaultResponseMessage, 14)
 

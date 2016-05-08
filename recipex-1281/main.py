@@ -1413,7 +1413,7 @@ class RecipexServerApi(remote.Service):
         prescriptions = Prescription.query(ancestor=user.key)
         for prescription in prescriptions:
             prescription_info = PrescriptionInfoMessage(name=prescription.name,
-                                                        active_ingr_key=prescription.active_ingr_key,
+                                                        active_ingr_key=prescription.active_ingr_key.id(),
                                                         active_ingr_name=prescription.active_ingr_name,
                                                         kind=prescription.kind,
                                                         dose=prescription.dose, units=prescription.units,
@@ -1464,7 +1464,7 @@ class RecipexServerApi(remote.Service):
         for prescription in prescriptions:
             if not prescriptions.seen:
                 prescription_info = PrescriptionInfoMessage(name=prescription.name,
-                                                            active_ingr_key=prescription.active_ingr_key,
+                                                            active_ingr_key=prescription.active_ingr_key.id(),
                                                             active_ingr_name=prescription.active_ingr_name,
                                                             kind=prescription.kind,
                                                             dose=prescription.dose, units=prescription.units,
@@ -2506,7 +2506,7 @@ class RecipexServerApi(remote.Service):
                                                         response=DefaultResponseMessage(code=NOT_FOUND,
                                                                                         message="Prescription not existent.")))
 
-        prescription_info = PrescriptionInfoMessage(name=prescription.name, active_ingr_key=prescription.active_ingr_key,
+        prescription_info = PrescriptionInfoMessage(name=prescription.name, active_ingr_key=prescription.active_ingr_key.id(),
                                                     active_ingr_name=prescription.active_ingr_name, kind=prescription.kind,
                                                     dose=prescription.dose, units=prescription.units, quantity=prescription.quantity,
                                                     recipe=prescription.recipe, pil=prescription.pil, seen=prescription.seen,

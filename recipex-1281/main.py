@@ -119,6 +119,7 @@ class Request(ndb.Model):
     kind = ndb.StringProperty(required=True)
     role = ndb.StringProperty()
     caregiver = ndb.KeyProperty()
+    isPending = ndb.BooleanProperty()
     message = ndb.StringProperty()
 
 
@@ -216,6 +217,12 @@ class UserMainInfoMessage(messages.Message):
     surname = messages.StringField(4)
     email = messages.StringField(5)
     pic = messages.StringField(6)
+    field = messages.StringField(7)
+
+
+class UserListOfUsersMessage(messages.Message):
+    users = messages.MessageField(UserMainInfoMessage, 1, repeated=True)
+    response = messages.MessageField(DefaultResponseMessage, 2)
 
 
 class UserInfoMessage(messages.Message):
@@ -254,6 +261,7 @@ class UserRelationsMessage(messages.Message):
     is_visiting_nurse = messages.BooleanField(3)
     is_caregiver = messages.BooleanField(4)
     is_patient = messages.BooleanField(5)
+    response = messages.MessageField(DefaultResponseMessage, 6)
 
 
 class AddMeasurementMessage(messages.Message):
@@ -398,7 +406,8 @@ class MessageInfoMessage(messages.Message):
     hasRead = messages.BooleanField(4)
     message = messages.StringField(5)
     measurement = messages.IntegerField(6)
-    response = messages.MessageField(DefaultResponseMessage, 7)
+    sender_pic = messages.StringField(7)
+    response = messages.MessageField(DefaultResponseMessage, 8)
 
 
 class UserMessagesMessage(messages.Message):
@@ -451,7 +460,11 @@ class RequestInfoMessage(messages.Message):
     role = messages.StringField(5)
     caregiver = messages.IntegerField(6)
     message = messages.StringField(7)
-    response = messages.MessageField(DefaultResponseMessage, 8)
+    pending = messages.BooleanField(8)
+    sender_pic = messages.StringField(9)
+    sender_name = messages.StringField(10)
+    sender_surname = messages.StringField(11)
+    response = messages.MessageField(DefaultResponseMessage, 12)
 
 
 class UserRequestsMessage(messages.Message):
@@ -486,7 +499,7 @@ class AddPrescriptionMessage(messages.Message):
     caregiver = messages.IntegerField(9)
 
 
-ADD_PRESCRIPTION_MESSAGE = endpoints.ResourceContainer(AddMeasurementMessage,
+ADD_PRESCRIPTION_MESSAGE = endpoints.ResourceContainer(AddPrescriptionMessage,
                                                        id=messages.IntegerField(2, required=True))
 
 
@@ -520,6 +533,13 @@ class UserPrescriptionsMessage(messages.Message):
     response = messages.MessageField(DefaultResponseMessage, 2)
 
 
+class UserUnseenInfoMessage(messages.Message):
+    num_messages = messages.IntegerField(1)
+    num_requests = messages.IntegerField(2)
+    num_prescriptions = messages.IntegerField(3)
+    response = messages.MessageField(DefaultResponseMessage, 4)
+
+
 @endpoints.api(name="recipexServerApi", version="v1",
                hostname="recipex-1281.appspot.com",
                allowed_client_ids=[credentials.WEB_CLIENT_ID,
@@ -542,6 +562,34 @@ class RecipexServerApi(remote.Service):
         logging.info(local_dt)
 
         return DefaultResponseMessage(message="Hello World!")
+
+    @endpoints.method(message_types.VoidMessage, UserListOfUsersMessage,
+                      path="recipexServerApi/users", http_method="GET", name="user.getUsers")
+    def get_users(self, request):
+        RecipexServerApi.authentication_check()
+        users = User.query()
+
+        users_info = []
+        for user in users:
+            user_info = UserMainInfoMessage(id=user.key.id(),
+                                            name=user.name,
+                                            surname=user.surname,
+                                            email=user.email,
+                                            pic=user.pic)
+
+            caregiver = Caregiver.query(ancestor=user.key).get()
+            if caregiver:
+                user_info.caregiver_id = caregiver.key.id()
+                user_info.field = caregiver.field
+
+            users_info.append(user_info)
+
+        return RecipexServerApi.return_response(code=OK,
+                                                message="Users info retrieved.",
+                                                response=UserListOfUsersMessage(
+                                                    users=users_info,
+                                                    response=DefaultResponseMessage(code=OK,
+                                                                                    message="Users info retrieved.")))
 
     @endpoints.method(RegisterUserMessage, DefaultResponseMessage,
                       path="recipexServerApi/users", http_method="POST", name="user.registerUser")
@@ -707,7 +755,8 @@ class RecipexServerApi(remote.Service):
                                                             name=pc_physician_usr.name,
                                                             surname=pc_physician_usr.surname,
                                                             email=pc_physician_usr.email,
-                                                            pic=pc_physician_usr.pic)
+                                                            pic=pc_physician_usr.pic,
+                                                            field=pc_physician_entity.field)
 
         if user.visiting_nurse:
             visiting_nurse_entity = user.visiting_nurse.get()
@@ -718,7 +767,8 @@ class RecipexServerApi(remote.Service):
                                                               name=visiting_nurse_usr.name,
                                                               surname=visiting_nurse_usr.surname,
                                                               email=visiting_nurse_usr.email,
-                                                              pic=visiting_nurse_usr.pic)
+                                                              pic=visiting_nurse_usr.pic,
+                                                              field=visiting_nurse_entity.field)
 
         if user.relatives:
             user_relatives = []
@@ -743,7 +793,8 @@ class RecipexServerApi(remote.Service):
                                                                name=caregiver_usr.name,
                                                                surname=caregiver_usr.surname,
                                                                email=caregiver_usr.email,
-                                                               pic=caregiver_usr.pic))
+                                                               pic=caregiver_usr.pic,
+                                                               field=caregiver_entity.field))
             usr_info.caregivers = user_caregivers
 
         caregiver = Caregiver.query(ancestor=user.key).get()
@@ -1173,14 +1224,22 @@ class RecipexServerApi(remote.Service):
         user_messages = []
 
         for message in messages_entities:
+            sender = message.sender.get()
+            if sender:
+                pic = sender.pic
             if message.measurement:
                 user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender.id(),
                                                         receiver=message.receiver.id(), message=message.message,
-                                                        hasRead=message.hasRead, measurement=message.measurement.id()))
+                                                        hasRead=message.hasRead, sender_pic=pic,
+                                                        measurement=message.measurement.id()))
             else:
                 user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender.id(),
                                                         receiver=message.receiver.id(), message=message.message,
-                                                        hasRead=message.hasRead))
+                                                        sender_pic=pic, hasRead=message.hasRead))
+
+            if not message.hasRead:
+                message.hasRead = True
+                message.put()
 
         return RecipexServerApi.return_response(code=OK,
                                                 message="Messages retrieved.",
@@ -1208,15 +1267,18 @@ class RecipexServerApi(remote.Service):
 
         for message in messages_entities:
             if not message.hasRead:
+                sender = message.sender.get()
+                if sender:
+                    pic = sender.pic
                 if message.measurement:
                     user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender.id(),
                                                             receiver=message.receiver.id(), message=message.message,
-                                                            hasRead=message.hasRead,
+                                                            hasRead=message.hasRead, sender_pic=pic,
                                                             measurement=message.measurement.id()))
                 else:
                     user_messages.append(MessageInfoMessage(id=message.key.id(), sender=message.sender.id(),
                                                             receiver=message.receiver.id(), message=message.message,
-                                                            hasRead=message.hasRead))
+                                                            sender_pic=pic, hasRead=message.hasRead))
 
         return RecipexServerApi.return_response(code=OK,
                                                 message="Messages retrieved.",
@@ -1253,15 +1315,26 @@ class RecipexServerApi(remote.Service):
         user_requests = []
 
         for request in request_entities:
+            sender = request.sender.get()
+            if sender:
+                pic = sender.pic
+                name = sender.name
+                surname = sender.surname
             if request.kind == "RELATIVE":
                 user_requests.append(RequestInfoMessage(id=request.key.id(), receiver=request.receiver.id(),
                                                         sender=request.sender.id(), message=request.message,
-                                                        kind=request.kind, role=request.role))
+                                                        kind=request.kind, role=request.role, sender_pic=pic,
+                                                        sender_name=name, sender_surname=surname,
+                                                        pending=request.isPending))
             else:
                 user_requests.append(RequestInfoMessage(id=request.key.id(), receiver=request.receiver.id(),
                                                         sender=request.sender.id(), message=request.message,
-                                                        kind=request.kind, role=request.role,
-                                                        caregiver=request.caregiver.id()))
+                                                        kind=request.kind, role=request.role, sender_pic=pic,
+                                                        sender_name=name, sender_surname=surname,
+                                                        pending=request.isPending, caregiver=request.caregiver.id()))
+            if request.isPending:
+                request.isPending = False
+                request.put()
 
         return RecipexServerApi.return_response(code=OK,
                                                 message="Requests retrieved.",
@@ -1300,15 +1373,22 @@ class RecipexServerApi(remote.Service):
         user_requests = []
 
         for request in request_entities:
+            sender = request.sender.get()
+            if sender:
+                pic = sender.pic
+                name = sender.name
+                surname = sender.surname
             if request.kind == "RELATIVE":
                 user_requests.append(RequestInfoMessage(id=request.key.id(), receiver=request.receiver.id(),
                                                         sender=request.sender.id(), message=request.message,
-                                                        kind=request.kind, role=request.role))
+                                                        kind=request.kind, role=request.role, sender_name=name,
+                                                        sender_surname=surname, sender_pic=pic, pending=request.isPending))
             else:
                 user_requests.append(RequestInfoMessage(id=request.key.id(), receiver=request.receiver.id(),
                                                         sender=request.sender.id(), message=request.message,
-                                                        kind=request.kind, role=request.role,
-                                                        caregiver=request.caregiver.id()))
+                                                        kind=request.kind, role=request.role, sender_pic=pic,
+                                                        sender_name=name, sender_surname=surname,
+                                                        pending=request.isPending, caregiver=request.caregiver.id()))
 
         return RecipexServerApi.return_response(code=OK,
                                                 message="Requests retrieved.",
@@ -1427,7 +1507,7 @@ class RecipexServerApi(remote.Service):
                                                         response=DefaultResponseMessage(code=NOT_FOUND,
                                                                                         message="User not existent.")))
 
-        profile_user = Key(User, request.id).get()
+        profile_user = Key(User, request.profile_id).get()
         if not profile_user:
             return RecipexServerApi.return_response(code=NOT_FOUND,
                                                     message="Profile user not existent.",
@@ -1435,22 +1515,24 @@ class RecipexServerApi(remote.Service):
                                                         response=DefaultResponseMessage(code=NOT_FOUND,
                                                                                         message="Profile user not existent.")))
 
-        answer = UserRequestsMessage(is_pc_physician=False, is_visiting_nurse=False,
-                                     is_caregiver=False, is_patient=False)
+        answer = UserRelationsMessage(is_pc_physician=False, is_visiting_nurse=False,
+                                      is_caregiver=False, is_patient=False)
 
-        if profile_user.key.id() in user.relatives.keys():
+        old_request = Request.query(ancestor=profile_user.key).filter(Request.sender == user.key)
+
+        if profile_user.key.id() in user.relatives.keys() or old_request.filter(Request.kind == "RELATIVE").get():
             answer.is_relative = True
         else:
             answer.is_relative = False
 
         profile_caregiver = Caregiver.query(ancestor=profile_user.key).get()
-
+        # TODO Per patients??
         if profile_caregiver is not None:
-            if user.pc_physician == profile_caregiver.key:
+            if user.pc_physician == profile_caregiver.key or old_request.filter(Request.kind == "PC_PHYSICIAN").get():
                 answer.is_pc_physician = True
-            if user.visiting_nurse == profile_caregiver.key:
+            if user.visiting_nurse == profile_caregiver.key or old_request.filter(Request.kind == "V_NURSE").get():
                 answer.is_visiting_nurse = True
-            if user.caregiver == profile_caregiver.key:
+            if profile_caregiver.key.id() in user.caregivers.keys() or old_request.filter(Request.kind == "CAREGIVER").get():
                 answer.is_caregiver = True
 
         user_caregiver = Caregiver.query(ancestor=user.key).get()
@@ -1459,11 +1541,52 @@ class RecipexServerApi(remote.Service):
             if profile_user.key in user_caregiver.patients.keys():
                 answer.is_patient = True
 
+        answer.response = DefaultResponseMessage(code=OK, message="Relations info retrieved.")
+
         return RecipexServerApi.return_response(code=OK,
                                                 message="Relations info retrieved.",
-                                                response=UserRelationsMessage(
+                                                response=answer)
+
+    @endpoints.method(USER_ID_MESSAGE, UserUnseenInfoMessage,
+                      path="recipexServerApi/users/{id}/has-unseen-info", http_method="GET",
+                      name="user.hasUnseenInfoMessages")
+    def has_unseen_info(self, request):
+        RecipexServerApi.authentication_check()
+
+        user = Key(User, request.id).get()
+        if not user:
+            return RecipexServerApi.return_response(code=NOT_FOUND,
+                                                    message="User not existent.",
+                                                    response=UserUnseenInfoMessage(
+                                                        response=DefaultResponseMessage(code=NOT_FOUND,
+                                                                                        message="User not existent.")))
+
+        messages_entities = Message.query(ancestor=user.key)
+        num_messages = 0
+        for message in messages_entities:
+            if not message.hasRead:
+                num_messages += 1
+
+        requests_entities = Request.query(ancestor=user.key)
+        num_requests = 0
+        for request in requests_entities:
+            if request.isPending:
+                num_requests += 1
+
+        prescriptions_entities = Message.query(ancestor=user.key)
+        num_prescriptions = 0
+        for prescription in prescriptions_entities:
+            if not prescription.hasSeen:
+                num_prescriptions += 1
+
+        return RecipexServerApi.return_response(code=OK,
+                                                message="Unread unseen info retrieved.",
+                                                response=UserUnseenInfoMessage(
+                                                    num_messages=num_messages,
+                                                    num_requests=num_requests,
+                                                    num_prescriptions=num_prescriptions,
                                                     response=DefaultResponseMessage(code=OK,
-                                                                                    message="Relations info retrieved.")))
+                                                                                    message="Unread unseen info retrieved.")))
 
     @endpoints.method(ADD_MEASUREMENT_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/measurements", http_method="POST", name="measurement.addMeasurement")
@@ -1494,7 +1617,7 @@ class RecipexServerApi(remote.Service):
         new_measurement = Measurement(parent=user.key, date_time=date_time, kind=request.kind, note=request.note)
 
         if request.kind == "BP":
-            if not request.systolic or not request.diastolic:
+            if request.systolic is None or request.diastolic is None:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                         message="Input parameter(s) missing.",
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
@@ -1507,7 +1630,7 @@ class RecipexServerApi(remote.Service):
             new_measurement.systolic = request.systolic
             new_measurement.diastolic = request.diastolic
         elif request.kind == "HR":
-            if not request.bpm:
+            if request.bpm is None:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                         message="Input parameter missing.",
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
@@ -1519,7 +1642,7 @@ class RecipexServerApi(remote.Service):
                                                                                         message="Input parameter out of range."))
             new_measurement.bpm = request.bpm
         elif request.kind == "RR":
-            if not request.respirations:
+            if request.respirations is None:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                         message="Input parameter missing.",
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
@@ -1531,7 +1654,7 @@ class RecipexServerApi(remote.Service):
                                                                                         message="Input parameter out of range."))
             new_measurement.respirations = request.respirations
         elif request.kind == "SpO2":
-            if not request.spo2:
+            if request.spo2 is None:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                         message="Input parameter missing.",
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
@@ -1543,7 +1666,7 @@ class RecipexServerApi(remote.Service):
                                                                                         message="Input parameter out of range."))
             new_measurement.spo2 = request.spo2
         elif request.kind == "HGT":
-            if not request.hgt:
+            if request.hgt is None:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                         message="Input parameter missing.",
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
@@ -1555,7 +1678,7 @@ class RecipexServerApi(remote.Service):
                                                                                         message="Input parameter out of range."))
             new_measurement.hgt = request.hgt
         elif request.kind == "TMP":
-            if not request.degrees:
+            if request.degrees is None:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                         message="Input parameter missing.",
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
@@ -1567,7 +1690,7 @@ class RecipexServerApi(remote.Service):
                                                                                         message="Input parameter out of range."))
             new_measurement.degrees = request.degrees
         elif request.kind == "PAIN":
-            if not request.nrs:
+            if request.nrs is None:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                         message="Input parameter missing.",
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
@@ -1579,7 +1702,7 @@ class RecipexServerApi(remote.Service):
                                                                                         message="Input parameter out of range."))
             new_measurement.nrs = request.nrs
         else:
-            if not request.chl_level:
+            if request.chl_level is None:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                         message="Input parameter missing.",
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
@@ -1650,7 +1773,7 @@ class RecipexServerApi(remote.Service):
                 measurement.note = None
 
         if measurement.kind == "BP":
-            if request.systolic:
+            if request.systolic is not None:
                 if request.systolic < 0 or request.systolic > 250:
                     return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                             message="Input parameter(s) out of range.",
@@ -1658,7 +1781,7 @@ class RecipexServerApi(remote.Service):
                                                                 code=PRECONDITION_FAILED,
                                                                 message="Input parameter(s) out of range."))
                 measurement.systolic = request.systolic
-            if request.diastolic:
+            if request.diastolic is not None:
                 if request.diastolic < 0 or request.diastolic > 250:
                     return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                             message="Input parameter out of range.",
@@ -1667,7 +1790,7 @@ class RecipexServerApi(remote.Service):
                                                                 message="Input parameter out of range."))
                 measurement.diastolic = request.diastolic
         elif request.kind == "HR":
-            if request.bpm:
+            if request.bpm is not None:
                 if request.bpm < 0 or request.bpm > 400:
                     return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                             message="Input parameter out of range.",
@@ -1676,7 +1799,7 @@ class RecipexServerApi(remote.Service):
                                                                 message="Input parameter out of range."))
                 measurement.bpm = request.bpm
         elif request.kind == "RR":
-            if request.respirations:
+            if request.respirations is not None:
                 if request.respirations < 0 or request.respirations > 200:
                     return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                             message="Input parameter out of range.",
@@ -1685,7 +1808,7 @@ class RecipexServerApi(remote.Service):
                                                                 message="Input parameter out of range."))
                 measurement.respirations = request.respirations
         elif request.kind == "SpO2":
-            if request.spo2:
+            if request.spo2 is not None:
                 if request.spo2 < 0 or request.spo2 > 100:
                     return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                             message="Input parameter out of range.",
@@ -1694,7 +1817,7 @@ class RecipexServerApi(remote.Service):
                                                                 message="Input parameter out of range."))
                 measurement.spo2 = request.spo2
         elif request.kind == "HGT":
-            if request.hgt:
+            if request.hgt is not None:
                 if request.hgt < 0 or request.hgt > 600:
                     return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                             message="Input parameter out of range.",
@@ -1703,7 +1826,7 @@ class RecipexServerApi(remote.Service):
                                                                 message="Input parameter out of range."))
                 measurement.hgt = request.hgt
         elif request.kind == "TMP":
-            if request.degrees:
+            if request.degrees is not None:
                 if request.degrees < 30 or request.degrees > 45:
                     return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                             message="Input parameter out of range.",
@@ -1712,7 +1835,7 @@ class RecipexServerApi(remote.Service):
                                                                 message="Input parameter out of range."))
                 measurement.degrees = request.degrees
         elif request.kind == "PAIN":
-            if request.nrs:
+            if request.nrs is not None:
                 if request.nrs < 0 or request.nrs > 10:
                     return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                             message="Input parameter out of range.",
@@ -1721,7 +1844,7 @@ class RecipexServerApi(remote.Service):
                                                                 message="Input parameter out of range."))
                 measurement.nrs = request.nrs
         else:
-            if request.chl_level:
+            if request.chl_level is not None:
                 if request.chl_level < 0 or request.chl_level > 800:
                     return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                             message="Input parameter out of range.",
@@ -1876,8 +1999,14 @@ class RecipexServerApi(remote.Service):
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                         message="User not the receiver.")))
 
-        msg_msg = MessageInfoMessage(sender=message.sender.id(), receiver=message.receiver.id(),
-                                     message=message.message, hasRead=message.hasRead, measurement=message.measurement.id(),
+        message.hasRead = True
+        message.put()
+
+        sender = message.sender.get()
+        if sender:
+            pic = sender.pic
+        msg_msg = MessageInfoMessage(sender=message.sender.id(), receiver=message.receiver.id(), message=message.message,
+                                     hasRead=message.hasRead, measurement=message.measurement.id(), sender_pic=pic,
                                      response=DefaultResponseMessage(code=OK, message="Message info retrieved."))
 
         return RecipexServerApi.return_response(code=OK,
@@ -2040,7 +2169,8 @@ class RecipexServerApi(remote.Service):
                                                             message="Already a relative."))
 
         new_request = Request(parent=receiver.key, sender=sender.key, receiver=receiver.key,
-                              kind=request.kind, message=request.message, role=request.role, caregiver=caregiver_key)
+                              kind=request.kind, message=request.message, role=request.role,
+                              isPending=True, caregiver=caregiver_key)
 
         new_request.put()
 
@@ -2078,9 +2208,18 @@ class RecipexServerApi(remote.Service):
                                                         response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                         message="User not the receiver.")))
 
+        usr_request.isPending = False
+        usr_request.put()
+
+        sender = usr_request.sender.get()
+        if sender:
+            pic = sender.pic
+            name = sender.name
+            surname = sender.surname
         rqst_msg = RequestInfoMessage(sender=usr_request.sender.id(), receiver=usr_request.receiver.id(),
-                                      kind=usr_request.kind, message=usr_request.message,
-                                      role=usr_request.role, caregiver=usr_request.caregiver.id(),
+                                      kind=usr_request.kind, message=usr_request.message, role=usr_request.role,
+                                      sender_pic=pic, caregiver=usr_request.caregiver.id(), sender_name=name,
+                                      sender_surname=surname, pending=request.isPending,
                                       response=DefaultResponseMessage(code=OK, message="Request info retrieved."))
 
         return RecipexServerApi.return_response(code=NOT_FOUND,

@@ -1442,7 +1442,7 @@ class RecipexServerApi(remote.Service):
         return RecipexServerApi.return_response(code=OK,
                                                 message="Prescriptions retrieved.",
                                                 response=UserPrescriptionsMessage(
-                                                    requests=user_prescriptions,
+                                                    prescriptions=user_prescriptions,
                                                     response=DefaultResponseMessage(code=OK,
                                                                                     message="Prescriptions retrieved.")))
 
@@ -1490,7 +1490,7 @@ class RecipexServerApi(remote.Service):
         return RecipexServerApi.return_response(code=OK,
                                                 message="Unseen prescriptions retrieved.",
                                                 response=UserPrescriptionsMessage(
-                                                    requests=user_prescriptions,
+                                                    prescriptions=user_prescriptions,
                                                     response=DefaultResponseMessage(code=OK,
                                                                                     message="Unseen prescriptions retrieved.")))
 

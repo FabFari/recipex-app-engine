@@ -30,7 +30,6 @@ import pytz
 import logging
 import credentials
 
-
 # TODO Controlla bene tutti i set: quando inserisci devi prima controllare... e non lo fai quasi mai!!!
 
 # CONSTANTS

@@ -1523,11 +1523,13 @@ class RecipexServerApi(remote.Service):
                                       is_visiting_nurse=False, is_visiting_nurse_request=False, is_caregiver=False,
                                       is_caregiver_request=False, is_patient=False, is_patient_request=False)
 
-        old_request = Request.query(ancestor=profile_user.key).filter(Request.sender == user.key)
+        old_request_prof = Request.query(ancestor=profile_user.key).filter(Request.sender == user.key)
+        old_request_user = Request.query(ancestor=user.key).filter(Request.sender == profile_user.key)
 
         if profile_user.key.id() in user.relatives.keys():
             answer.is_relative = True
-        elif old_request.filter(Request.kind == "RELATIVE").get():
+        elif old_request_prof.filter(Request.kind == "RELATIVE").get() or\
+                old_request_user.filter(Request.kind == "RELATIVE").get():
             answer.is_relative = True
             answer.is_relative_request = True
         else:
@@ -1535,48 +1537,46 @@ class RecipexServerApi(remote.Service):
 
         profile_caregiver = Caregiver.query(ancestor=profile_user.key).get()
         # TODO Per patients??
-        is_patient_request_sent = False
         if profile_caregiver is not None:
-            is_pc_physician_query = old_request.filter(Request.kind == "PC_PHYSICIAN").get()
-
             if user.pc_physician == profile_caregiver.key:
                 answer.is_pc_physician = True
-            elif is_pc_physician_query:
-                if is_pc_physician_query.role == "PATIENT":
-                    answer.is_pc_physician = True
-                    answer.is_pc_physician_request = True
-                else:
-                    is_patient_request_sent = True
-            is_visiting_nurse_query = old_request.filter(Request.kind == "V_NURSE").get()
+            elif old_request_prof.filter(Request.kind == "PC_PHYSICIAN").get():
+                answer.is_pc_physician = True
+                answer.is_pc_physician_request = True
 
             if user.visiting_nurse == profile_caregiver.key:
                 answer.is_visiting_nurse = True
-            elif is_visiting_nurse_query:
-                if is_visiting_nurse_query.role == "PATIENT":
-                    answer.is_visiting_nurse = True
-                    answer.is_visiting_nurse_request = True
-                else:
-                    is_patient_request_sent = True
-
-            is_caregiver_query = old_request.filter(Request.kind == "CAREGIVER").get()
+            elif old_request_prof.filter(Request.kind == "V_NURSE").get():
+                answer.is_visiting_nurse = True
+                answer.is_visiting_nurse_request = True
 
             if profile_caregiver.key.id() in user.caregivers.keys():
                 answer.is_caregiver = True
-            elif is_caregiver_query:
-                if is_caregiver_query.role == "PATIENT":
-                    answer.is_caregiver = True
-                    answer.is_caregiver_request = True
-                else:
-                    is_patient_request_sent = True
+            elif old_request_prof.filter(Request.kind == "CAREGIVER").get():
+                answer.is_caregiver = True
+                answer.is_caregiver_request = True
 
         user_caregiver = Caregiver.query(ancestor=user.key).get()
 
         if user_caregiver is not None:
+            '''
             if profile_user.key in user_caregiver.patients.keys():
                 answer.is_patient = True
             elif is_patient_request_sent:
                 answer.is_patient = True
                 answer.is_patient_request = True
+            '''
+            if old_request_user.filter(Request.kind == "PC_PHYSICIAN").get():
+                answer.is_pc_physician = True
+                answer.is_pc_physician_request = True
+
+            if old_request_user.filter(Request.kind == "V_NURSE").get():
+                answer.is_visiting_nurse = True
+                answer.is_visiting_nurse_request = True
+
+            if old_request_user.filter(Request.kind == "CAREGIVER").get():
+                answer.is_caregiver = True
+                answer.is_caregiver_request = True
 
         answer.response = DefaultResponseMessage(code=OK, message="Relations info retrieved.")
 
@@ -2142,6 +2142,15 @@ class RecipexServerApi(remote.Service):
 
         old_request = Request.query(ancestor=receiver.key).filter(ndb.AND(Request.sender == sender.key,
                                                                           Request.kind == request.kind)).get()
+        if old_request:
+            return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
+                                                    message="Request already existent.",
+                                                    response=DefaultResponseMessage(code=PRECONDITION_FAILED,
+                                                                                    message="Request already existent."))
+
+        old_request = Request.query(ancestor=sender.key).filter(ndb.AND(Request.sender == receiver.key,
+                                                                        Request.kind == request.kind)).get()
+
         if old_request:
             return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                     message="Request already existent.",

@@ -256,11 +256,16 @@ class UserInfoMessage(messages.Message):
 
 class UserRelationsMessage(messages.Message):
     is_relative = messages.BooleanField(1)
-    is_pc_physician = messages.BooleanField(2)
-    is_visiting_nurse = messages.BooleanField(3)
-    is_caregiver = messages.BooleanField(4)
-    is_patient = messages.BooleanField(5)
-    response = messages.MessageField(DefaultResponseMessage, 6)
+    is_relative_request = messages.BooleanField(2)
+    is_pc_physician = messages.BooleanField(3)
+    is_pc_physician_request = messages.BooleanField(4)
+    is_visiting_nurse = messages.BooleanField(5)
+    is_visiting_nurse_request = messages.BooleanField(6)
+    is_caregiver = messages.BooleanField(7)
+    is_caregiver_request = messages.BooleanField(8)
+    is_patient = messages.BooleanField(9)
+    is_patient_request = messages.BooleanField(10)
+    response = messages.MessageField(DefaultResponseMessage, 11)
 
 
 class AddMeasurementMessage(messages.Message):
@@ -1514,31 +1519,64 @@ class RecipexServerApi(remote.Service):
                                                         response=DefaultResponseMessage(code=NOT_FOUND,
                                                                                         message="Profile user not existent.")))
 
-        answer = UserRelationsMessage(is_pc_physician=False, is_visiting_nurse=False,
-                                      is_caregiver=False, is_patient=False)
+        answer = UserRelationsMessage(is_relative_request=False, is_pc_physician=False, is_pc_physician_request=False,
+                                      is_visiting_nurse=False, is_visiting_nurse_request=False, is_caregiver=False,
+                                      is_caregiver_request=False, is_patient=False, is_patient_request=False)
 
         old_request = Request.query(ancestor=profile_user.key).filter(Request.sender == user.key)
 
-        if profile_user.key.id() in user.relatives.keys() or old_request.filter(Request.kind == "RELATIVE").get():
+        if profile_user.key.id() in user.relatives.keys():
             answer.is_relative = True
+        elif old_request.filter(Request.kind == "RELATIVE").get():
+            answer.is_relative = True
+            answer.is_relative_request = True
         else:
             answer.is_relative = False
 
         profile_caregiver = Caregiver.query(ancestor=profile_user.key).get()
         # TODO Per patients??
+        is_patient_request_sent = False
         if profile_caregiver is not None:
-            if user.pc_physician == profile_caregiver.key or old_request.filter(Request.kind == "PC_PHYSICIAN").get():
+            is_pc_physician_query = old_request.filter(Request.kind == "PC_PHYSICIAN").get()
+
+            if user.pc_physician == profile_caregiver.key:
                 answer.is_pc_physician = True
-            if user.visiting_nurse == profile_caregiver.key or old_request.filter(Request.kind == "V_NURSE").get():
+            elif is_pc_physician_query:
+                if is_pc_physician_query.role == "PATIENT":
+                    answer.is_pc_physician = True
+                    answer.is_pc_physician_request = True
+                else:
+                    is_patient_request_sent = True
+            is_visiting_nurse_query = old_request.filter(Request.kind == "V_NURSE").get()
+
+            if user.visiting_nurse == profile_caregiver.key:
                 answer.is_visiting_nurse = True
-            if profile_caregiver.key.id() in user.caregivers.keys() or old_request.filter(Request.kind == "CAREGIVER").get():
+            elif is_visiting_nurse_query:
+                if is_visiting_nurse_query.role == "PATIENT":
+                    answer.is_visiting_nurse = True
+                    answer.is_visiting_nurse_request = True
+                else:
+                    is_patient_request_sent = True
+
+            is_caregiver_query = old_request.filter(Request.kind == "CAREGIVER").get()
+
+            if profile_caregiver.key.id() in user.caregivers.keys():
                 answer.is_caregiver = True
+            elif is_caregiver_query:
+                if is_caregiver_query.role == "PATIENT":
+                    answer.is_caregiver = True
+                    answer.is_caregiver_request = True
+                else:
+                    is_patient_request_sent = True
 
         user_caregiver = Caregiver.query(ancestor=user.key).get()
 
         if user_caregiver is not None:
             if profile_user.key in user_caregiver.patients.keys():
                 answer.is_patient = True
+            elif is_patient_request_sent:
+                answer.is_patient = True
+                answer.is_patient_request = True
 
         answer.response = DefaultResponseMessage(code=OK, message="Relations info retrieved.")
 

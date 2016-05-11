@@ -600,11 +600,15 @@ class RecipexServerApi(remote.Service):
     def register_user(self, request):
         RecipexServerApi.authentication_check()
 
-        if User.query(User.email == request.email).count() > 0:
+        user_query = User.query(User.email == request.email).get()
+
+        # if User.query(User.email == request.email).count() > 0:
+        if user_query:
             return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
                                                     message="User already existent.",
                                                     response=DefaultResponseMessage(code=PRECONDITION_FAILED,
-                                                                                    message="User already existent."))
+                                                                                    message="User already existent.",
+                                                                                    payload=str(user_query.key.id())))
 
         if request.years_exp or request.place or request.business_num or request.bio or request.available:
             if not request.field:

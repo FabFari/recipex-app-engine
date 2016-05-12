@@ -527,9 +527,10 @@ class PrescriptionInfoMessage(messages.Message):
     caregiver_user_id = messages.IntegerField(12)
     caregiver_name = messages.StringField(13)
     caregiver_surname = messages.StringField(14)
-    caregiver_job = messages.StringField(15)
-    seen = messages.BooleanField(16)
-    response = messages.MessageField(DefaultResponseMessage, 17)
+    caregiver_mail = messages.StringField(15)
+    caregiver_job = messages.StringField(16)
+    seen = messages.BooleanField(17)
+    response = messages.MessageField(DefaultResponseMessage, 18)
 
 
 class UserPrescriptionsMessage(messages.Message):
@@ -1439,6 +1440,7 @@ class RecipexServerApi(remote.Service):
                 prescription_info.caregiver_id = prescription.caregiver.id()
                 prescription_info.caregiver_name = user_caregiver.name
                 prescription_info.caregiver_surname = user_caregiver.surname
+                prescription_info.caregiver_mail = user_caregiver.email
                 if user.pc_physician == prescription.caregiver:
                     prescription_info.caregiver_job = "PC_PHYSICIAN"
                 elif user.visiting_nurse == prescription.caregiver:
@@ -1590,7 +1592,7 @@ class RecipexServerApi(remote.Service):
 
     @endpoints.method(USER_ID_MESSAGE, UserUnseenInfoMessage,
                       path="recipexServerApi/users/{id}/has-unseen-info", http_method="GET",
-                      name="user.hasUnseenInfoMessages")
+                      name="user.hasUnseenInfo")
     def has_unseen_info(self, request):
         RecipexServerApi.authentication_check()
 
@@ -2573,6 +2575,7 @@ class RecipexServerApi(remote.Service):
             prescription_info.caregiver_id = prescription.caregiver.id()
             prescription_info.caregiver_name = user_caregiver.name
             prescription_info.caregiver_surname = user_caregiver.surname
+            prescription_info.caregiver_mail = user_caregiver.email
             if user.pc_physician == prescription.caregiver:
                 prescription_info.caregiver_job = "PC_PHYSICIAN"
             elif user.visiting_nurse == prescription.caregiver:

@@ -143,12 +143,6 @@ class Prescription(ndb.Model):
 
 
 # MESSAGE CLASSES
-class DefaultResponseMessage(messages.Message):
-    code = messages.StringField(1)
-    message = messages.StringField(2)
-    payload = messages.StringField(3)
-    user = messages.MessageField(RegisterUserMessage, 4)
-
 
 class RegisterUserMessage(messages.Message):
     email = messages.StringField(1, required=True)
@@ -166,6 +160,13 @@ class RegisterUserMessage(messages.Message):
     business_num = messages.StringField(13)
     bio = messages.StringField(14)
     available = messages.StringField(15)
+
+
+class DefaultResponseMessage(messages.Message):
+    code = messages.StringField(1)
+    message = messages.StringField(2)
+    payload = messages.StringField(3)
+    user = messages.MessageField(RegisterUserMessage, 4)
 
 
 class UpdateUserMessage(messages.Message):

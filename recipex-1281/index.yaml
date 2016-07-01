@@ -4,3 +4,7 @@ indexes:
   properties:
   - name: date_time
     direction: desc
+- kind: Prescription
+  ancestor: yes
+  properties:
+  - name: name

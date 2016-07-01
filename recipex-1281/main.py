@@ -57,6 +57,32 @@ class DictPickleProperty(ndb.PickleProperty):
 
 # DATASTORE CLASSES
 class User(ndb.Model):
+    """A User of the application
+
+    Summary:
+        This class models the user entities in the systems.
+        Users can either be Caregivers or Non-Caregivers. In the former case
+        along with a User entity there's also a corresponding Caregiver entity.
+
+    Attributes:
+        Inherited:
+            id = Datastore id of the User entity
+        User defined:
+            email = User's email [REQUIRED]
+            name = User's first name [REQUIRED]
+            surname = User's last name [REQUIRED]
+            birth = User's birth [REQUIRED]
+            pic = URL to User's profile pic [REQUIRED]
+            sex = User's gender [REQUIRED]
+            city = User's city
+            address = User's address
+            personal_num = User's personal phone number
+            relatives = Dictionary keeping the keys of User's relative within the application
+            pc_physician = Key of the User's PC Physician within the application
+            visiting_nurse = Key of the User's Visiting nurse within the application
+            caregivers = Dictionary keeping the keys of User's generic caregivers within the application
+            calendarId = Id of the User's Google Calendar used by the mobile application
+    """
     email = ndb.StringProperty(required=True)
     name = ndb.StringProperty(required=True)
     surname = ndb.StringProperty(required=True)
@@ -74,6 +100,25 @@ class User(ndb.Model):
 
 
 class Caregiver(ndb.Model):
+    """Caregiver user additional details
+
+    Summary:
+        This class keeps the job information of careviger users.
+        It has a parent relation with the corresponding user's entity.
+
+    Attributes:
+        Inherited:
+            id = Datastore id of the Caregiver entity
+            parent = Corresponding User entity [REQUIRED]
+        User defined:
+            field = Caregiver's field of specialization [REQUIRED]
+            years_exp = Caregiver's years of experience
+            place = Caregiver's place of work
+            business_num = Caregivers' business phone number
+            bio = Caregiver short biography
+            available = Caregiver's available days of the week
+            patients = Dictionary keeping the keys of Caregiver's patients within the application
+    """
     field = ndb.StringProperty(required=True)
     years_exp = ndb.IntegerProperty()
     place = ndb.StringProperty()
@@ -84,6 +129,33 @@ class Caregiver(ndb.Model):
 
 
 class Measurement(ndb.Model):
+    """A Measurement performed by a User
+
+    Summary:
+        This class models the entities keeping the measurements done by users.
+        Each measurement has a kind (allowed kinds are specified into MEASUREMENT_KIND):
+        each kind as a set of specific mandatory fields that must be specified.
+        It has a parent relation with the corresponding user's entity.
+
+    Attributes:
+        Inherited:
+            id = Datastore id of the Measurement entity
+            parent = Corresponding User entity
+        User Defined:
+            date_time = Measurement's Day and Time [REQUIRED]
+            kind = Measurement's kind [REQUIRED]
+            note = Measurement's additional notes by the user
+            systolic = Systolic pressure [REQUIRED IF KIND = BP]
+            diastolic = Diastolic pressure [REQUIRED IF KIND = BP]
+            bpm = Heart beats per minute [REQUIRED IF KIND = HR]
+            respirations = Respirations done per minute [REQUIRED IF KIND = RR]
+            spo2 = Pulse Oximeter Oxigen Saturation [REQUIRED IF KIND = SpO2]
+            hgt = Blood Sugar level [REQUIRED IF KIND = HGT]
+            degrees = Body temperature (in Celsius degrees) [REQUIRED IF KIND = TMP]
+            nrs = Pain level (0-10 scale) [REQUIRED IF KIND = PAIN]
+            chl_level = Cholesterol level [REQUIRED IF KIND = CHL]
+            calendar_id = Google Calendar's id of the measurements event
+    """
     date_time = ndb.DateTimeProperty(required=True)
     kind = ndb.StringProperty(required=True)
     note = ndb.StringProperty()
@@ -100,7 +172,7 @@ class Measurement(ndb.Model):
     hgt = ndb.FloatProperty()
     # Body Temperature (TMP)
     degrees = ndb.FloatProperty()
-    # Pain (P)
+    # Pain (PAIN)
     nrs = ndb.IntegerProperty()
     # Cholesterol (CHL)
     chl_level = ndb.FloatProperty()
@@ -108,6 +180,24 @@ class Measurement(ndb.Model):
 
 
 class Message(ndb.Model):
+    """A Message sent by a User to another one
+
+    Summary:
+        This class models a message sent by a user to another one within the application.
+        It has a parent relation with the corresponding receiver User's entity.
+        It could be linked to a specific measurements done by the user.
+
+    Attributes:
+        Inherited:
+            id = Datastore id of the Message entity
+            parent = User's entity of the message receiver
+        User Defined:
+            sender = Key of the User sender entity of the Message [REQUIRED]
+            receiver = Key of the User receiver entity of the Message [REQUIRED]
+            message = Text of the message [REQUIRED]
+            has_read = Boolean value to track if the message has been read [REQUIRED]
+            measurement = Key of the Measurement entity of the Message
+    """
     sender = ndb.KeyProperty(required=True)
     receiver = ndb.KeyProperty(required=True)
     message = ndb.StringProperty(required=True)
@@ -116,6 +206,28 @@ class Message(ndb.Model):
 
 
 class Request(ndb.Model):
+    """A Request sent by a User to another one
+
+    Summary:
+        This class models a request message send by a user to another one.
+        The request has a kind (allowed kinds are spedified into REQUEST_KIND)
+        and may have a role (allowed roles are specified into ROLE_TYPE).
+        It has a parent relation with the corresponding receiver User's entity.
+
+    Attributes:
+        Inherited:
+            id = Datastore id of the Request entity
+            parent = User's entity of the message receiver
+        User defined:
+            sender = Key of the User sender entity of the Request [REQUIRED]
+            receiver = Key of the User reveier entity of the Request [REQUIRED]
+            kind = Request's kind [REQUIRED]
+            calendarId = Google Calendar Id of the Sender User's Calendar [REQUIRED]
+            role = Role of the sender User's entity in the request [REQUIRED IF KIND != RELATIVE]
+            caregiver = Key of the Caregiver's entity [REQUIRED IF KIND != RELATIVE]
+            isPending = Boolean value to track if the request is pending or not [REQUIRED]
+            message = Text message of the Request
+    """
     sender = ndb.KeyProperty(required=True)
     receiver = ndb.KeyProperty(required=True)
     kind = ndb.StringProperty(required=True)
@@ -127,11 +239,43 @@ class Request(ndb.Model):
 
 
 class ActiveIngredient(ndb.Model):
+    """An Active Ingredient stored in the application
+
+    Summary:
+        This class models an Active Ingredient entity within the application.
+
+    Attributes:
+        Inherited:
+            id = Datastore id of the Active Inngredient entity
+        User defined:
+            name = Active Ingredient's name [REQUIRED]
+    """
     name = ndb.StringProperty(required=True)
 
 
 # TODO Aggiungere Orario e Giorni di assunzione su Google Calendar
 class Prescription(ndb.Model):
+    """A User's Medical Prescription
+
+    Summary:
+        This class models the Prescriptions User's need to follow.
+        A prescription has a kind (allowed kinds are contained into PRESCRIPTION_KIND)
+        It has a parent relation with the corresponding User's entity.
+
+    Attributes:
+        name = Name of the Prescription's drug to take [REQUIRED]
+        active_ingr_key = Key of the Prescription's Active Ingredient entity [REQUIRED]
+        active_ingr_name = Name of the drug's Active Ingredient of the Prescription [REQUIRED]
+        kind = Kind of the Prescription's drug [REQUIRED]
+        dose = Dose of the Prescription's drug [REQUIRED]
+        units = Unit of measure of the drug's dose [REQUIRED]
+        quantity = Number of assumptions per day [REQUIRED]
+        recipe = Boolean that states if the Prescription's drug need a medical recipe or not [REQUIRED]
+        pil = URL of the patient information leaflet (PIL) of the Prescription's drug
+        caregiver = Key of the Caregiver's entity who prescribed the Prescription
+        seen = Boolean value to track if the User saw the prescription or not [REQUIRED]
+        calendarIds = Google Calendar ids of the Prescription's events [REQUIRED]
+    """
     name = ndb.StringProperty(required=True)
     active_ingr_key = ndb.KeyProperty(required=True)
     active_ingr_name = ndb.StringProperty(required=True)
@@ -147,8 +291,30 @@ class Prescription(ndb.Model):
 
 
 # MESSAGE CLASSES
-
 class RegisterUserMessage(messages.Message):
+    """Message to register a User
+
+    Summary:
+        This Message Class is intended for register a User within the application.
+
+    Attributes:
+        email = User's email [REQUIRED]
+        name = User's first name [REQUIRED]
+        surname = User's last name [REQUIRED]
+        birth = User's birth [REQUIRED]
+        pic = URL to User's profile pic [REQUIRED]
+        sex = User's gender [REQUIRED]
+        city = User's city
+        address = User's address
+        personal_num = User's personal phone number
+        field = Caregiver's field of specilization [REQUIRED IF REGISTERING A CAREGIVER]
+        years_exp = Caregiver's years of experience
+        place = Caregiver's place of work
+        business_num = Caregivers' business phone number
+        bio = Caregiver short biography
+        available = Caregiver's avalable days of the week
+        calendarId = Id of the User's Google Calendar used by the mobile application
+    """
     email = messages.StringField(1, required=True)
     name = messages.StringField(2, required=True)
     surname = messages.StringField(3, required=True)
@@ -168,6 +334,17 @@ class RegisterUserMessage(messages.Message):
 
 
 class DefaultResponseMessage(messages.Message):
+    """A generic response message
+
+    Summary:
+        This message class is intended for returning a generic response.
+
+    Attributes:
+        code = HTTP code of the response [REQUIRED]
+        message = Text message of the response [REQUIRED]
+        payload = Optional tesxtual payload of the response
+        user = RegisterUserMessage of a related invocation
+    """
     code = messages.StringField(1)
     message = messages.StringField(2)
     payload = messages.StringField(3)
@@ -175,6 +352,30 @@ class DefaultResponseMessage(messages.Message):
 
 
 class UpdateUserMessage(messages.Message):
+    """Message to update a User
+
+    Summary:
+        This message class is intended for update information of a User entity.
+        Resource container wrapper is required for specify URL-coded parameters.
+
+    Attributes:
+        email = User's email
+        name = User's first name
+        surname = User's last name
+        birth = User's birth
+        pic = URL to User's profile pic
+        sex = User's gender
+        city = User's city
+        address = User's address
+        personal_num = User's personal phone number
+        field = Caregiver's field of specialization
+        years_exp = Caregiver's years of experience
+        place = Caregiver's place of work
+        business_num = Caregivers' business phone number
+        bio = Caregiver short biography
+        available = Caregiver's available days of the week
+        calendarId = Id of the User's Google Calendar used by the mobile application
+    """
     # id = messages.IntegerField(1, required=True)
     name = messages.StringField(1)
     surname = messages.StringField(2)
@@ -191,17 +392,45 @@ class UpdateUserMessage(messages.Message):
     available = messages.StringField(13)
     calendarId = messages.StringField(14)
 
+"""Wrapper for UpdateUserMessage
 
+Summary:
+    ResourceContainer wrapper for UpdateUserMessage
+    to specify needed URL-coded parameters.
+
+Attributes:
+    id = Datastore id of the user [REQUIRED]
+"""
 UPDATE_USER_MESSAGE = endpoints.ResourceContainer(UpdateUserMessage,
                                                   id=messages.IntegerField(2, required=True))
 
-'''
-class UserIdMessage(messages.Message):
-    # id = messages.IntegerField(1, required=True)
-    kind = messages.StringField(1)
-    date_time = messages.StringField(2)
-'''
+"""Wrapper to query User informations
 
+Summary:
+    ResourceContainer wrapper for an empty message (message_types.VoidMessage)
+    used to query User's informations by specifying URL-coded parameters.
+    This message could be used to:
+        #1  Query all the User's informations;
+        #2  Delete the User from the application;
+        #3  Query all the User's Measurements;
+        #4  Query all the User's Messages;
+        #5  Query all the User's unread Messages;
+        #6  Query all the User's Requests;
+        #7  Query all the User's pending Requests;
+        #8  Query all the User's Prescriptions;
+        #9  Query all the User's unseen Prescriptions;
+        #10 Query all the User's current relations with another User;
+        #11 Query all the unseen or unread info.
+
+Attributes:
+    id = Datastore id of the User entity to be queried [REQUIRED]
+    profile_id = Datastore id of the User entity to be checked wrt relations info [REQUIRED FOR #10]
+    fetch = Number of entities to be fetched by the query [REQUIRED FOR #3]
+    kind = Kind of entities to be queried [OPTIONAL FOR #3]
+    date_time = Date and time of the last entity returned by the previous query [OPTIONAL FOR #3]
+    reverse = Boolean value to specify the order of the entities to be returned by the query [OPTIONAL FOR #3]
+    measurement_id = Datastore id of the last Measurement returned by the previous query [REQUIRED FOR #3]
+"""
 USER_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
                                               id=messages.IntegerField(2, required=True),
                                               # is_caregiver=messages.BooleanField(3),
@@ -212,7 +441,18 @@ USER_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
                                               reverse=messages.BooleanField(7),
                                               measurement_id=messages.IntegerField(8))
 
+"""Wrapper to update User's reations
 
+Summary:
+     ResourceContainer wrapper for an empty message (message_types.VoidMessage)
+     intended to update the relations of a specific User entity.
+
+Attributes:
+    id = Datastore id of the User entity to be updated [REQUIRED]
+    relation_id = Datastore id of the User involved in the relation to be updated [REQUIRED]
+    kind = Kind of the relation to be updated [REQUIRED]
+    role = Role of the User in the relation to be updated [REQUIRED IF KIND != RELATIVE]
+"""
 USER_UPDATE_RELATION_INFO = endpoints.ResourceContainer(message_types.VoidMessage,
                                                         id=messages.IntegerField(2, required=True),
                                                         relation_id=messages.IntegerField(3, required=True),
@@ -221,6 +461,22 @@ USER_UPDATE_RELATION_INFO = endpoints.ResourceContainer(message_types.VoidMessag
 
 
 class UserMainInfoMessage(messages.Message):
+    """Message to return User's main informations
+
+    Summary:
+        This message class is intended to return the most important
+        informations of a specific User entity.
+
+    Attributes:
+        id = Datastore id of the User entity
+        caregiver_id = Datastore id of the corresponding Caregiver entity [IF PRESENT]
+        name = Name of the User entity
+        surname = Surname of the User entity
+        email = Email of the User entity
+        pic = Profile pic of the User entity
+        field = Field of specialization of the Caregiver entity [IF PRESENT]
+        calendarid = Google Calendar id of the User's calendar
+    """
     id = messages.IntegerField(1)
     caregiver_id = messages.IntegerField(2)
     name = messages.StringField(3)
@@ -232,11 +488,52 @@ class UserMainInfoMessage(messages.Message):
 
 
 class UserListOfUsersMessage(messages.Message):
+    """Message to return a list of Users
+
+    Summary:
+        This message class is intended to be a wrapper for a response message
+        which returns as additional payload a list of UserMainInfoMessage.
+
+    Attributes:
+        users = A list of UserMainInfoMessage to be returned
+        response = A DefaultResponseMessage containing the response
+    """
     users = messages.MessageField(UserMainInfoMessage, 1, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 2)
 
 
 class UserInfoMessage(messages.Message):
+    """Message to return all the User's informations
+
+    Summary:
+        This message is intended for returning all the informations
+        stored for a specific User entity.
+
+    Attributes:
+        id = Datastore id of the User entity
+        email = User's email
+        name = User's first name
+        surname = User's last name
+        birth = User's birth
+        pic = URL to User's profile pic
+        sex = User's gender
+        city = User's city
+        address = User's address
+        personal_num = User's personal phone number
+        relatives = List of UserMainInfoMessage containing User's relatives main informations
+        pc_physician = UserMainInfoMessage containing User's PC Physician main informations
+        visiting_nurse = UserMainInfoMessage containing Visiting nurse main informations
+        caregivers = List of UserMainInfoMessage containing User's generic caregivers main informations
+        field = Caregiver's field of specialization [REQUIRED]
+        years_exp = Caregiver's years of experience
+        place = Caregiver's place of work
+        business_num = Caregivers' business phone number
+        bio = Caregiver short biography
+        available = Caregiver's available days of the week
+        patients = List of UserMainInfoMessage containing Caregiver's patients main informations
+        calendarId = Id of the User's Google Calendar used by the mobile application
+        response = DefaultResponseMessage containing the response
+    """
     id = messages.IntegerField(1)
     email = messages.StringField(2)
     name = messages.StringField(3)
@@ -268,6 +565,25 @@ class UserInfoMessage(messages.Message):
 
 
 class UserRelationsMessage(messages.Message):
+    """Message to return User's relation informations
+
+    Summary:
+        This message class is intended to return informations about
+        the current relation status between two Users.
+
+    Attributes:
+        is_relative = Boolean value to tell if there's a relative relation
+        is_relative_request = Boolean value to tell if there are relative requests
+        is_pc_physician = Boolean value to tell if there's a pc physician relation
+        is_pc_physician_request = Boolean value to tell if there are pc physician requests
+        is_visiting_nurse = Boolean value to tell if there's a visiting nurse relation
+        is_visiting_nurse_request = Boolean value to tell if there are visiting nurse requests
+        is_caregiver = Boolean value to tell if there's a caregiver relation
+        is_caregiver_request = Boolean value to tell if there are caregiver requests
+        is_patient = Boolean value to tell if there's a patient relation
+        is_patient_request = Boolean value to tell if there are patient requests
+        response = DefaultResponseMessage containing the response
+    """
     is_relative = messages.BooleanField(1)
     is_relative_request = messages.BooleanField(2)
     is_pc_physician = messages.BooleanField(3)
@@ -282,6 +598,25 @@ class UserRelationsMessage(messages.Message):
 
 
 class AddMeasurementMessage(messages.Message):
+    """Message used to add a Measurement
+
+    Summary:
+        This message class is intended to add a Measurement.
+
+    Attributes:
+        kind = Measurement's kind [REQUIRED]
+        systolic = Systolic pressure [REQUIRED IF KIND = BP]
+        diastolic = Diastolic pressure [REQUIRED IF KIND = BP]
+        bpm = Heart beats per minute [REQUIRED IF KIND = HR]
+        respirations = Respirations done per minute [REQUIRED IF KIND = RR]
+        spo2 = Pulse Oximeter Oxigen Saturation [REQUIRED IF KIND = SpO2]
+        hgt = Blood Sugar level [REQUIRED IF KIND = HGT]
+        degrees = Body temperature (in Celsius degrees) [REQUIRED IF KIND = TMP]
+        nrs = Pain level (0-10 scale) [REQUIRED IF KIND = PAIN]
+        chl_level = Cholesterol level [REQUIRED IF KIND = CHL]
+        note = Measurement's additional notes by the user
+        calendar_id = Google Calendar's id of the measurements event
+    """
     # user_id = messages.IntegerField(1, required=True)
     # date_time = messages.StringField(1, required=True)
     kind = messages.StringField(1, required=True)
@@ -305,12 +640,40 @@ class AddMeasurementMessage(messages.Message):
     note = messages.StringField(11)
     calendarId = messages.StringField(12)
 
+"""Wrapper for AddMeasurementMessage
 
+Summary:
+     ResourceContainer wrapper for an AddMeasurementMessage
+     to specify needed URL-coded parameters.
+
+Attributes:
+    user_id = Datastore id of the Measurement corresponding User entity [REQUIRED]
+"""
 ADD_MEASUREMENT_MESSAGE = endpoints.ResourceContainer(AddMeasurementMessage,
                                                       user_id=messages.IntegerField(2, required=True))
 
 
 class UpdateMeasurementMessage(messages.Message):
+    """Message to update a Measurement
+
+    Summary:
+        This message class is intended to update informations
+        of a specific Measurement entity.
+
+    Attributes:
+        kind = Measurement's kind [REQUIRED]
+        systolic = Systolic pressure [REQUIRED IF KIND = BP]
+        diastolic = Diastolic pressure [REQUIRED IF KIND = BP]
+        bpm = Heart beats per minute [REQUIRED IF KIND = HR]
+        respirations = Respirations done per minute [REQUIRED IF KIND = RR]
+        spo2 = Pulse Oximeter Oxigen Saturation [REQUIRED IF KIND = SpO2]
+        hgt = Blood Sugar level [REQUIRED IF KIND = HGT]
+        degrees = Body temperature (in Celsius degrees) [REQUIRED IF KIND = TMP]
+        nrs = Pain level (0-10 scale) [REQUIRED IF KIND = PAIN]
+        chl_level = Cholesterol level [REQUIRED IF KIND = CHL]
+        note = Measurement's additional notes by the user
+        calendar_id = Google Calendar's id of the measurements event
+    """
     # id = messages.IntegerField(1, required=True)
     # user_id = messages.IntegerField(2, required=True)
     # date_time = messages.StringField(3)
@@ -335,7 +698,16 @@ class UpdateMeasurementMessage(messages.Message):
     note = messages.StringField(11)
     calendarId = messages.StringField(12)
 
+"""Wrapper for UpdateMeasurementMessage
 
+Summary:
+    ResourceContainer wrapper for an UpdateMeasurementMessage
+    to specify needed URL-coded parameters.
+
+Attributes:
+    id = Datastore id of the corresponding Measurement entity [REQUIRED]
+    user_id = Datastore id of the corresponding User entity [REQUIRED]
+"""
 UPDATE_MEASUREMENT_MESSAGE = endpoints.ResourceContainer(UpdateMeasurementMessage,
                                                          id=messages.IntegerField(2, required=True),
                                                          user_id=messages.IntegerField(3, required=True))
@@ -347,13 +719,45 @@ class MeasurementIdMessage(messages.Message):
     id = messages.IntegerField(2, required=True)
 '''
 
+"""Wrapper to query Measurements informations
 
+Summary:
+    ResourceContainer wrapper for an empty message (message_types.VoidMessage)
+    that can be then used to:
+        #1  Query all the Measurement's informations;
+        #2  Delete the Measurement from the application.
+
+Attributes:
+    id = Datastore id of the corresponding Measurement entity [REQUIRED]
+    user_id = Datastore id of the corresponding User entity [REQUIRED]
+"""
 MEASUREMENT_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
                                                      id=messages.IntegerField(2, required=True),
                                                      user_id=messages.IntegerField(3, required=True))
 
 
 class MeasurementInfoMessage(messages.Message):
+    """Message to return all Measurement's informations
+
+    Summary:
+        This message class is intended to return all the informations
+        stored for a specific Measurement entity.
+
+    Attributes:
+        id = Datastore id of the Measurement entity
+        kind = Measurement's kind
+        systolic = Systolic pressure [PRESENT IF KIND = BP]
+        diastolic = Diastolic pressure [PRESENT IF KIND = BP]
+        bpm = Heart beats per minute [PRESENT IF KIND = HR]
+        respirations = Respirations done per minute [PRESENT IF KIND = RR]
+        spo2 = Pulse Oximeter Oxigen Saturation [PRESENT IF KIND = SpO2]
+        hgt = Blood Sugar level [REQUIRED IF KIND = HGT]
+        degrees = Body temperature (in Celsius degrees) [PRESENT IF KIND = TMP]
+        nrs = Pain level (0-10 scale) [PRESENT IF KIND = PAIN]
+        chl_level = Cholesterol level [PRESENT IF KIND = CHL]
+        note = Measurement's additional notes by the user
+        calendar_id = Google Calendar's id of the measurements event
+    """
     id = messages.IntegerField(1)
     date_time = messages.StringField(2)
     kind = messages.StringField(3)
@@ -380,6 +784,16 @@ class MeasurementInfoMessage(messages.Message):
 
 
 class UserMeasurementsMessage(messages.Message):
+    """Message to return a list of Measurements
+
+    Summary:
+        This message class is intended to be a wrapper for a response message
+        which returns as additional payload a list of MeasurementInfoMessage.
+
+    Attributes:
+        measurement = List of MeasurementInfoMessage to be returned
+        response = DefaultResponseMessage containing the response
+    """
     measurements = messages.MessageField(MeasurementInfoMessage, 1, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 2)
 
@@ -399,12 +813,31 @@ class UserFirstAidInfoMessage(messages.Message):
 
 
 class MessageSendMessage(messages.Message):
+    """Message to Send a Message to a User
+
+    Summary:
+        This message class is intended to Send a message to a specific
+        User within the application (i.e. create a Message entity).
+
+    Attributes:
+        sender = Datastore id of the sender User entity [REQUIRED]
+        message = Text message of the Message entity [REQUIRED]
+        measurement = Datastore id of the related Measurement entity
+    """
     sender = messages.IntegerField(1, required=True)
     # receiver = messages.IntegerField(2, required=True)
     message = messages.StringField(2, required=True)
     measurement = messages.IntegerField(3)
 
+"""Wrapper for MessageSendMessage
 
+Summary:
+    ResourceContainer wrapper for a MessageSendMessage
+    to specify needed URL-coded parameters.
+
+Attributes:
+    receiver = Datastore id of the receiver User entity
+"""
 MESSAGE_SEND_MESSAGE = endpoints.ResourceContainer(MessageSendMessage,
                                                    receiver=messages.IntegerField(2, required=True))
 
@@ -414,12 +847,39 @@ class MessageIdMessage(messages.Message):
     id = messages.IntegerField(2, required=True)
 '''
 
+"""Message to query Message informations
+
+Summary:
+    ResourceContainer wrapper for an empty message (message_types.VoidMessage)
+    that can be then used to:
+        #1 Query all the Message's informations;
+        #2 Notify that a message has been read by the receiver;
+        #3 Delete the Message from the application.
+
+Attributes:
+    user_id = Datastore id of the corresponding User entity [REQUIRED]
+    id = Datastore id of the corresponding Message entity [REQUIRED]
+"""
 MESSAGE_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
                                                  user_id=messages.IntegerField(2, required=True),
                                                  id=messages.IntegerField(3, required=True))
 
 
 class MessageInfoMessage(messages.Message):
+    """Message to return all Message's informations
+
+    Summary:
+        This message class is intended to return all the informations
+        stored for a specific Message entity.
+
+    Attributes:
+        id = Datastore id of the Message entity
+        sender = Datastore id of the User sender entity of the Message
+        receiver = Datastore id of the User receiver entity of the Message
+        message = Text of the message
+        has_read = Boolean value to track if the message has been read
+        measurement = Datastore id of the Measurement entity of the Message
+    """
     id = messages.IntegerField(1)
     sender = messages.IntegerField(2)
     receiver = messages.IntegerField(3)
@@ -431,11 +891,34 @@ class MessageInfoMessage(messages.Message):
 
 
 class UserMessagesMessage(messages.Message):
+    """Message to return a list o Messages
+
+    Summary:
+        This message class is intended to be a wrapper for a response message
+        which returns as additional payload a list of MessageInfoMessage.
+
+    Attributes:
+        user_messages = List of MessageInfoMessage to be returned
+        response = DefaultResponseMessage containing the response
+    """
     user_messages = messages.MessageField(MessageInfoMessage, 1, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 2)
 
 
 class RequestSendMessage(messages.Message):
+    """Message to send a Request to a User
+
+    Summary:
+        This class is intended to send a Request to a specific User
+        within the application (i.e. Add a Request entity).
+
+    Attributes:
+        sender = Datastore id of the User sender entity of the Request [REQUIRED]
+        kind = Request's kind [REQUIRED]
+        role = Role of the sender User's entity in the request [REQUIRED IF KIND != RELATIVE]
+        calendarId = Google Calendar Id of the Sender User's Calendar [REQUIRED]
+        message = Text message of the Request
+    """
     sender = messages.IntegerField(1, required=True)
     # receiver = messages.IntegerField(2, required=True)
     kind = messages.StringField(2, required=True)
@@ -443,7 +926,15 @@ class RequestSendMessage(messages.Message):
     calendarId = messages.StringField(4)
     message = messages.StringField(5)
 
+"""Wrapper for RequestSendMessage
 
+Summary:
+    ResourceContainer wrapper for a RequestSendMessage
+    to specify needed URL-coded parameters.
+
+Attributes:
+    receiver = Datastore id of the receiver User entity
+"""
 REQUEST_SEND_MESSAGE = endpoints.ResourceContainer(RequestSendMessage,
                                                    receiver=messages.IntegerField(2, required=True))
 
@@ -455,6 +946,19 @@ class RequestIdMessage(messages.Message):
     # kind = messages.StringField(4)
 '''
 
+"""Wrapper for query Request's informations
+
+Summary:
+    ResourceContainer wrapper for an empty message (message_types.VoidMessage)
+    that can be then used to:
+        #1 Query all the Request's informations;
+        #2 Delete the Request from the application.
+
+Attributes:
+    user_id = Datastore id of the receiver User entity [REQUIRED]
+    id = Datastore id of the corresponding Request entity [REQUIRED]
+    sender = Datastore id of the sender User entity [REQUIRED]
+"""
 REQUEST_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
                                                  user_id=messages.IntegerField(2, required=True),
                                                  id=messages.IntegerField(3, required=True),
@@ -467,6 +971,17 @@ class RequestAnswerMessage(messages.Message):
     answer = messages.BooleanField(3, required=True)
 '''
 
+"""Wrapper to answer a Request
+
+Summary:
+    ResourceContainer wrapper for an empty message (message_types.VoidMessage)
+    that can be then used to answer to Request sent by a User.
+
+Attributes:
+    user_id = Datastore id of the receiver User entity [REQUIRED]
+    id = Datastore id of the corresponding Request entity [REQUIRED]
+    answer = Boolean value with the response (True -> Accept, False -> Reject) [REQUIRED]
+"""
 REQUEST_ANSWER_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
                                                      user_id=messages.IntegerField(2, required=True),
                                                      id=messages.IntegerField(3, required=True),
@@ -474,6 +989,27 @@ REQUEST_ANSWER_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
 
 
 class RequestInfoMessage(messages.Message):
+    """Message to return all Request's informations
+
+    Summary:
+        This message class is intended to return all the informations
+        stored for a specific Request entity.
+
+    Attributes:
+        id = Datastore id of the Request entity
+        sender = Datastore id of the User sender entity of the Request
+        receiver = Datastore id of the User reveier entity of the Request
+        kind = Request's kind
+        role = Role of the sender User's entity in the request [PRESENT IF KIND != RELATIVE]
+        caregiver = Datastore id of the Caregiver's entity [PRESENT IF KIND != RELATIVE]
+        message = Text message of the Request
+        pending = Boolean value to track if the request is pending or not
+        sender_pic = URL of the sender User profile pic
+        sender_name = Name of the sender User
+        sender_surname = Surname of the sender User
+        calendarId = Google Calendar id of the Sender User's Calendar [REQUIRED]
+        response = DefaultREsponseMessage containing the response
+    """
     id = messages.IntegerField(1)
     sender = messages.IntegerField(2)
     receiver = messages.IntegerField(3)
@@ -490,26 +1026,85 @@ class RequestInfoMessage(messages.Message):
 
 
 class UserRequestsMessage(messages.Message):
+    """Message to return a list of Requests
+
+    Summary:
+        This message class is intended to be a wrapper for a response message
+        which returns as additional payload a list of RequestInfoMessage.
+
+    Attributes:
+        requests = List of RequestInfoMessage to be returned
+        response = DefaultResponseMessage containing the response
+    """
     requests = messages.MessageField(RequestInfoMessage, 1, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 2)
 
 
 class ActiveIngredientMessage(messages.Message):
+    """Message to specify Active Ingredient's informations
+
+    Summary:
+        This message class is intended to contain all the informations
+        for a specific Active Ingredient entity.
+
+    Attributes:
+        name = Active Ingredient's name
+        id = Datastore id of the Active Ingredient entity
+        response = DefaultResponseMessage containing the response
+    """
     name = messages.StringField(1, required=True)
     id = messages.IntegerField(2)
     response = messages.MessageField(DefaultResponseMessage, 3)
 
+"""Wrapper to query Active Ingredients informations
 
+Summary:
+    ResourceContainer wrapper for an empty message (message_types.VoidMessage)
+    that can be then used to:
+        #1 Query all the Active Ingredient's informations;
+        #2 Delete the Active Ingredient from the application.
+
+Attributes:
+    id = Datastore id of the corresponding Active Ingredient entity [REQUIRED]
+"""
 ACTIVE_INGREDIENT_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
                                                            id=messages.IntegerField(1, required=True))
 
 
 class ActiveIngredientsMessage(messages.Message):
+    """Message to return a list of Active Ingredients
+
+    Summary:
+        This message class is intended to be a wrapper for a response message
+        which returns as additional payload a list of ActiveIngredientMessage.
+
+    Attributes:
+        active_ingredients = List of ActiveIngredientMessage to be returned
+        response = DefaultResponseMessage containing the response
+    """
     active_ingredients = messages.MessageField(ActiveIngredientMessage, 1, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 2)
 
 
 class AddPrescriptionMessage(messages.Message):
+    """Message to add a Prescription
+
+    Summary:
+        This message class is used to add a Prescription to a specific User.
+        This can be done by the User itself or by one of the User's Caregivers.
+
+    Attributes:
+        name = Name of the Prescription's drug to take [REQUIRED]
+        active_ingredient = Datastore id of the Prescription's Active Ingredient entity [REQUIRED]
+        kind = Kind of the Prescription's drug [REQUIRED]
+        dose = Dose of the Prescription's drug [REQUIRED]
+        units = Unit of measure of the drug's dose [REQUIRED]
+        quantity = Number of assumptions per day [REQUIRED]
+        recipe = Boolean that states if the Prescription's drug need a medical recipe or not [REQUIRED]
+        pil = URL of the patient information leaflet (PIL) of the Prescription's drug
+        caregiver = Datastore id of the Caregiver's entity who prescribed the Prescription
+        calendarIds = Google Calendar ids of the Prescription's events [REQUIRED]
+    """
     name = messages.StringField(1, required=True)
     active_ingredient = messages.IntegerField(2, required=True)
     kind = messages.StringField(3, required=True)
@@ -521,17 +1116,53 @@ class AddPrescriptionMessage(messages.Message):
     caregiver = messages.IntegerField(9)
     calendarIds = messages.StringField(10, repeated=True)
 
+"""Wrapper for AddPrescriptionMessage
 
+Summary:
+    ResourceContainer wrapper for a AddPrescriptionMessage
+    to specify needed URL-coded parameters.
+
+Attributes:
+    id = Datastore id of the corresponding User entity
+"""
 ADD_PRESCRIPTION_MESSAGE = endpoints.ResourceContainer(AddPrescriptionMessage,
                                                        id=messages.IntegerField(2, required=True))
 
+"""Wrapper to query Prescription informations
 
+Summary:
+    ResourceContainer wrapper for an empty message (message_types.VoidMessage)
+    that can be then used to:
+        #1 Query all the Prescription's informations;
+        #2 Delete the Prescriptions from the application.
+
+Attributes:
+    id = Datastore id of the corresponding Prescription entity [REQUIRED]
+    user_id = Datastore id of the receiver User entity [REQUIRED]
+"""
 PRESCRIPTION_ID_MESSAGE = endpoints.ResourceContainer(message_types.VoidMessage,
                                                       id=messages.IntegerField(2, required=True),
                                                       user_id=messages.IntegerField(3, required=True))
 
 
 class UpdatePrescriptionMessage(messages.Message):
+    """Message to update a Prescription
+    Summary:
+        This message class is intended to update informations
+        of a specific Prescription entity.
+
+    Attributes:
+        name = Name of the Prescription's drug to take
+        active_ingredient = Datastore id of the Active Ingredient of the Prescription's drug
+        kind = Kind of the Prescription's drug
+        dose = Dose of the Prescription's drug
+        units = Unit of measure of the drug's dose
+        quantity = Number of assumptions per day
+        recipe = Boolean that states if the Prescription's drug need a medical recipe or not
+        pil = URL of the patient information leaflet (PIL) of the Prescription's drug
+        calendarIds = Google Calendar ids of the Prescription's events
+        response = DefaultResponseMessage containing the response
+    """
     name = messages.StringField(1)
     active_ingredient = messages.IntegerField(2)
     kind = messages.StringField(3)
@@ -543,12 +1174,49 @@ class UpdatePrescriptionMessage(messages.Message):
     calendarIds = messages.StringField(9, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 10)
 
+"""Wrapper for UpdatePrescriptionMessage
+
+Summary:
+    ResourceContainer wrapper for an UpdatePrescriptionMessage
+    to specify needed URL-coded parameters.
+
+Attributes:
+    id = Datastore id of the corresponding Prescription entity [REQUIRED]
+    user_id = Datastore id of the corresponding User entity [REQUIRED]
+"""
 UPDATE_PRESCRIPTION_MESSAGE = endpoints.ResourceContainer(UpdatePrescriptionMessage,
                                                           id=messages.IntegerField(2, required=True),
                                                           user_id=messages.IntegerField(3, required=True))
 
 
 class PrescriptionInfoMessage(messages.Message):
+    """Message to return all the Prescription's informations
+
+    Summary:
+        This message class is used to update the informations
+        of a specific Prescription entity.
+
+    Attributes:
+        id = Datastore id of the Prescription entity
+        name = Name of the Prescription's drug to take
+        active_ingr_key = Key of the Prescription's Active Ingredient entity
+        active_ingr_name = Name of the drug's Active Ingredient of the Prescription
+        kind = Kind of the Prescription's drug
+        dose = Dose of the Prescription's drug
+        units = Unit of measure of the drug's dose
+        quantity = Number of assumptions per day
+        recipe = Boolean that states if the Prescription's drug need a medical recipe or not
+        pil = URL of the patient information leaflet (PIL) of the Prescription's drug
+        caregiver_id = Datastore id of the User's entity of the Caregiver
+        caregiver_user_id = Datastore id of the Caregiver's entity
+        caregiver_name = Name of the Caregiver
+        caregiver_surname = Surname of the Caregiver
+        caregiver_mail = Email of the Caregiver
+        caregiver_job = Kind of Caregiver (PC Physician, Visiting Nurse or Caregiver)
+        seen = Boolean value to track if the User saw the prescription or not
+        calendarIds = Google Calendar ids of the Prescription's events
+        response = DefaultResponseMessage containing the response
+    """
     id = messages.IntegerField(1)
     name = messages.StringField(2)
     active_ingr_key = messages.IntegerField(3)
@@ -571,11 +1239,33 @@ class PrescriptionInfoMessage(messages.Message):
 
 
 class UserPrescriptionsMessage(messages.Message):
+    """Message to return a list of Prescriptions
+
+    Summary:
+        This message class is intended to be a wrapper for a response message
+        which returns as additional payload a list of PrescriptionInfoMessage.
+
+    Attributes:
+        prescriptions = List of PrescriptionInfoMessage to be returned
+        response = DefaultResponseMessage containing the response
+    """
     prescriptions = messages.MessageField(PrescriptionInfoMessage, 1, repeated=True)
     response = messages.MessageField(DefaultResponseMessage, 2)
 
 
 class UserUnseenInfoMessage(messages.Message):
+    """Message to return the User's amount of unseen informations
+
+    Summary:
+        This message class is used to return informations about the amount
+        of unseen informations for a specific User entity.
+
+    Attributes:
+        num_messages = Number of unseen Messages
+        num_requests = Number of pending Requests
+        num_prescriptions = Number of unseen Prescriptions
+        response = DefaultResponseMessage containing the response
+    """
     num_messages = messages.IntegerField(1)
     num_requests = messages.IntegerField(2)
     num_prescriptions = messages.IntegerField(3)
@@ -593,6 +1283,21 @@ class UserUnseenInfoMessage(messages.Message):
                audiences=[credentials.ANDROID_AUDIENCE],
                scopes=[endpoints.EMAIL_SCOPE])
 class RecipexServerApi(remote.Service):
+    """Web Service class
+
+    Summary:
+        This class represents the Web Service offered by the application backend
+        and running on top of Google App Engine infrastructure.
+        All the RPCs available are listed within this class.
+
+    Annotation's attributes:
+        name = The name of the API
+        version = Endpoint's version
+        hostname = Endpoint's hostname
+        allowed_client_ids = List of client IDs for clients allowed to request tokens
+        audiences = Client ID of the backend API (for supporting Android clients)
+        scopes = OAuth 2.0 requested scopes
+    """
     @endpoints.method(message_types.VoidMessage, DefaultResponseMessage,
                       path='recipexServerApi/hello', http_method="GET", name="hello.helloWorld")
     def hello_world(self, request):
@@ -608,6 +1313,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(message_types.VoidMessage, UserListOfUsersMessage,
                       path="recipexServerApi/users", http_method="GET", name="user.getUsers")
     def get_users(self, request):
+        """Retrieve all the Users of the application
+
+        :param request: An empty (message_types.VoidMessage) request message
+        :return: DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
         users = User.query()
 
@@ -1192,20 +1902,20 @@ class RecipexServerApi(remote.Service):
             if request.kind == "PC_PHYSICIAN":
                 if patient.pc_physician == caregiver.key:
                     patient.pc_physician = None
-                if patient.visiting_nurse != caregiver.key and\
-                   caregiver.key.id() not in patient.caregivers.keys():
+                if patient.visiting_nurse != caregiver.key and caregiver.key.parent().id() not in patient.caregivers.keys() and\
+                   patient.key.id() in caregiver.patients.keys():
                     del caregiver.patients[patient.key.id()]
             elif request.kind == "V_NURSE":
                 if patient.visiting_nurse == caregiver.key:
                     patient.visiting_nurse = None
-                if patient.pc_physician != caregiver.key and \
-                   caregiver.key.id() not in patient.caregivers.keys():
+                if patient.pc_physician != caregiver.key and caregiver.key.parent().id() not in patient.caregivers.keys() and \
+                   patient.key.id() in caregiver.patients.keys():
                     del caregiver.patients[patient.key.id()]
             else:
-                if caregiver.key.id() in patient.caregivers.keys():
-                    del patient.caregivers[caregiver.key.id()]
-                if patient.pc_physician != caregiver.key and\
-                   patient.visiting_nurse != caregiver.key:
+                if caregiver.key.parent().id() in patient.caregivers.keys():
+                    del patient.caregivers[caregiver.key.parent().id()]
+                if patient.pc_physician != caregiver.key and patient.visiting_nurse != caregiver.key and \
+                   patient.key.id() in caregiver.patients.keys():
                     del caregiver.patients[patient.key.id()]
 
             patient.put()
@@ -1522,9 +2232,10 @@ class RecipexServerApi(remote.Service):
                                                                                         message="User not existent.")))
 
         user_prescriptions = []
-        prescriptions = Prescription.query(ancestor=user.key)
+        prescriptions = Prescription.query(ancestor=user.key).order(Prescription.name)
         for prescription in prescriptions:
-            prescription_info = PrescriptionInfoMessage(name=prescription.name,
+            prescription_info = PrescriptionInfoMessage(id=prescription.key.id(),
+                                                        name=prescription.name,
                                                         active_ingr_key=prescription.active_ingr_key.id(),
                                                         active_ingr_name=prescription.active_ingr_name,
                                                         kind=prescription.kind,

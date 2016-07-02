@@ -1347,6 +1347,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(RegisterUserMessage, DefaultResponseMessage,
                       path="recipexServerApi/users", http_method="POST", name="user.registerUser")
     def register_user(self, request):
+        """Register a new User
+
+        :param request: A RegisterUserMessage request message
+        :return: A DefaultResponseMessage containing the new User's Datastore id along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user_query = User.query(User.email == request.email).get()
@@ -1409,6 +1414,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(UPDATE_USER_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{id}", http_method="PUT", name="user.updateUser")
     def update_user(self, request):
+        """Update an existing User
+
+        :param request: An UPDATE_USER_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
         if not user:
@@ -1505,6 +1515,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(USER_ID_MESSAGE, UserInfoMessage,
                       path="recipexServerApi/users/{id}", http_method="GET", name="user.getUser")
     def get_user(self, request):
+        """Retrive all the User's informations
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserInfoMessage containing the informations along with the response
+        """
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
         if not user:
@@ -1608,6 +1623,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(USER_ID_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{id}", http_method="DELETE", name="user.deleteUser")
     def delete_user(self, request):
+        """Delete an existing User
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
         if not user:
@@ -1849,6 +1869,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(USER_UPDATE_RELATION_INFO, DefaultResponseMessage,
                       path="recipexServerApi/users/{id}/relations", http_method="PATCH", name="user.updateRelationInfo")
     def update_relation_info(self, request):
+        """Update some User's relations
+
+        :param request: A USER_UPDATE_RELATION_INFO request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
         if not user:
@@ -1929,6 +1954,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(USER_ID_MESSAGE, UserMeasurementsMessage,
                       path="recipexServerApi/users/{id}/measurements", http_method="GET", name="user.getMeasurements")
     def get_measurements(self, request):
+        """Retrieve all the Measurements done by some User
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserMeasurementsMessage containing all the User's Measurements along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.id).get()
@@ -2028,6 +2058,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(USER_ID_MESSAGE, UserMessagesMessage,
                       path="recipexServerApi/users/{id}/messages", http_method="GET", name="user.getMessages")
     def get_messages(self, request):
+        """Retrieve all the Messages received by some User
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserMessagesMessage containing all the User's Messages along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.id).get()
@@ -2070,6 +2105,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(USER_ID_MESSAGE, UserMessagesMessage,
                       path="recipexServerApi/users/{id}/unread-messages", http_method="GET", name="user.getUnreadMessages")
     def get_unread_messages(self, request):
+        """Retrieve all the unread Messages of some User
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserMessagesMessage containing all the User's unread Messages along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.id).get()
@@ -2109,6 +2149,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(USER_ID_MESSAGE, UserRequestsMessage,
                       path="recipexServerApi/users/{id}/requests", http_method="GET", name="user.getRequests")
     def get_requests(self, request):
+        """Retrive all the Requests received by some User
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserRequestsMessage containing all the User's Requests along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.id).get()
@@ -2166,6 +2211,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(USER_ID_MESSAGE, UserRequestsMessage,
                       path="recipexServerApi/users/{id}/requests-pending", http_method="GET", name="user.getRequestsPending")
     def get_requests_pending(self, request):
+        """Retrieve all the pending Request of some User
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserRequestsMessage containing all the User's pending Requests along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.id).get()
@@ -2223,6 +2273,11 @@ class RecipexServerApi(remote.Service):
                       path="recipexServerApi/users/{id}/prescriptions", http_method="GET",
                       name="user.getPrescriptions")
     def get_prescriptions(self, request):
+        """Retrieve all the Prescriptions of some User
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserPrescriptionsMessage containing all the User's Prescriptions along with the response
+        """
         user = Key(User, request.id).get()
         if not user:
             return RecipexServerApi.return_response(code=NOT_FOUND,
@@ -2276,6 +2331,11 @@ class RecipexServerApi(remote.Service):
                       path="recipexServerApi/users/{id}/unseen-prescriptions", http_method="GET",
                       name="user.getUnseenPrescriptions")
     def get_unseen_prescriptions(self, request):
+        """Retrieve all the unseen Prescription of some User
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserPrescriptionsMessage containing all the User's unseen Prescriptions along with the response
+        """
         user = Key(User, request.id).get()
         if not user:
             return RecipexServerApi.return_response(code=NOT_FOUND,
@@ -2325,6 +2385,11 @@ class RecipexServerApi(remote.Service):
                       path="recipexServerApi/users/{id}/relations/{profile_id}", http_method="GET",
                       name="user.checkUserRelations")
     def check_user_relations(self, request):
+        """Return the current relations status between two Users
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserRelationsMessage containing the current relations status along with the response
+        """
         user = Key(User, request.id).get()
         if not user:
             return RecipexServerApi.return_response(code=NOT_FOUND,
@@ -2430,6 +2495,16 @@ class RecipexServerApi(remote.Service):
                       path="recipexServerApi/users/{id}/has-unseen-info", http_method="GET",
                       name="user.hasUnseenInfo")
     def has_unseen_info(self, request):
+        """Retrieve amount of unseen information of some User
+
+        Unseen informations can be:
+            - Unseen Messages
+            - Pending Requests
+            - Unseen Prescriptions (sent by some User's Caregiver)
+
+        :param request: A USER_ID_MESSAGE request message
+        :return: A UserUnseenInfoMessage containing the amount of unseen informations along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.id).get()
@@ -2470,6 +2545,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(ADD_MEASUREMENT_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/measurements", http_method="POST", name="measurement.addMeasurement")
     def add_measurement(self, request):
+        """Add a Measurement done by some User
+
+        :param request: An ADD_MEASUREMENT_MESSAGE request message
+        :return: A DefaultResponseMessage containing the new Measurement's Datastore id along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.user_id).get()
@@ -2605,6 +2685,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(UPDATE_MEASUREMENT_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/measurements/{id}", http_method="PUT", name="measurement.updateMeasurement")
     def update_measurement(self, request):
+        """Update an existing Measurement
+
+        :param request: A UPDATE_MEASUREMENT_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
 
         measurement = Key(User, request.user_id, Measurement, request.id).get()
@@ -2748,6 +2833,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(MEASUREMENT_ID_MESSAGE, MeasurementInfoMessage,
                       path="recipexServerApi/users/{user_id}/measurements/{id}", http_method="GET", name="measurement.getMeasurement")
     def get_measurement(self, request):
+        """Retrieve all the informations of some Measurement
+
+        :param request: A MEASUREMENT_ID_MESSAGE request message
+        :return: A MeasurementInfoMessage containing all the Measurement's informations along with the response
+        """
         RecipexServerApi.authentication_check()
         measurement = Key(User, request.user_id, Measurement, request.id).get()
         if not measurement:
@@ -2796,6 +2886,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(MEASUREMENT_ID_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/measurements/{id}", http_method="DELETE", name="measurement.deleteMeasurement")
     def delete_measurement(self, request):
+        """Delete an existing Measurement
+
+        :param request: A MEASUREMENT_ID_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
         measurement = Key(User, request.user_id, Measurement, request.id).get()
         if not measurement:
@@ -2819,6 +2914,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(MESSAGE_SEND_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{receiver}/messages", http_method="POST", name="message.sendMessage")
     def send_message(self, request):
+        """Send a Message to some other User
+
+        :param request: A MESSAGE_SEND_MESSAGE request message
+        :return: A DefaultResponseMessage containing the new Message's Datastore id along with the response
+        """
         RecipexServerApi.authentication_check()
 
         sender = Key(User, request.sender).get()
@@ -2861,6 +2961,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(MESSAGE_ID_MESSAGE, MessageInfoMessage,
                       path="recipexServerApi/users/{user_id}/messages/{id}", http_method="GET", name="message.getMessage")
     def get_message(self, request):
+        """Retrieve all the informations of some Message
+
+        :param request: A MESSAGE_ID_MESSAGE request message
+        :return: A MessageInfoMessage containing all the Message's informations along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.user_id).get()
@@ -2903,6 +3008,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(MESSAGE_ID_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/messages/{id}", http_method="PUT", name="message.readMessage")
     def read_message(self, request):
+        """To flag a Message of some User as read
+
+        :param request: A MESSAGE_ID_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.user_id).get()
@@ -2936,6 +3046,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(MESSAGE_ID_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/messages/{id}", http_method="DELETE", name="message.deleteMessage")
     def delete_message(self, request):
+        """Delete an existing Message
+
+        :param request: A MESSAGE_ID_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.user_id).get()
@@ -3113,6 +3228,9 @@ class RecipexServerApi(remote.Service):
         usr_request.put()
 
         sender = usr_request.sender.get()
+        pic = None
+        name = None
+        surname = None
         if sender:
             pic = sender.pic
             name = sender.name

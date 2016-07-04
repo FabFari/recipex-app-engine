@@ -3083,6 +3083,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(REQUEST_SEND_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{receiver}/requests", http_method="POST", name="request.sendRequest")
     def send_request(self, request):
+        """Send a Request to another User
+
+        :param request: A REQUEST_SEND_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
 
         sender = Key(User, request.sender).get()
@@ -3199,6 +3204,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(REQUEST_ID_MESSAGE, RequestInfoMessage,
                       path="recipexServerApi/users/{user_id}/requests/{id}", http_method="GET", name="request.getRequest")
     def get_request(self, request):
+        """Retrieve all the informations of a specific Request
+
+        :param request: A REQUEST_ID_MESSAGE request message
+        :return: A RequestInfoMessage containing all the Request's informations along with the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.user_id).get()
@@ -3248,6 +3258,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(REQUEST_ANSWER_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/requests/{id}", http_method="PUT", name="request.answerRequest")
     def answer_request(self, request):
+        """To answer to a Request
+
+        :param request: A REQUEST_ANSWER_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response along with the Google Calendar ID of the requestor
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.user_id).get()
@@ -3320,18 +3335,23 @@ class RecipexServerApi(remote.Service):
                 patient.put()
                 caregiver.put()
 
-        calendarId = usr_request.calendarId
+        calendarid = usr_request.calendarId
         usr_request.key.delete()
 
         return RecipexServerApi.return_response(code=OK,
                                                 message="Answer received.",
                                                 response=DefaultResponseMessage(code=OK,
                                                                                 message="Answer received.",
-                                                                                payload=calendarId))
+                                                                                payload=calendarid))
 
     @endpoints.method(REQUEST_ID_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/requests/{id}", http_method="DELETE", name="request.deleteRequest")
     def delete_request(self, request):
+        """Delete an existing Request
+
+        :param request: A REQUEST_ID_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
 
         user = Key(User, request.user_id).get()
@@ -3377,6 +3397,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(ActiveIngredientMessage, DefaultResponseMessage,
                       path="recipexServerApi/active_ingredients", http_method="POST", name="activeIngredient.addActiveIngredient")
     def add_active_ingredient(self, request):
+        """Add a new Active Ingredient
+
+        :param request: An ActiveIngredientMessage request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
         active_ingredient = ActiveIngredient.query(ActiveIngredient.name == request.name).get()
         if active_ingredient:
@@ -3396,6 +3421,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(ACTIVE_INGREDIENT_ID_MESSAGE, ActiveIngredientMessage,
                       path="recipexServerApi/active_ingredients/{id}", http_method="GET", name="activeIngredient.getActiveIngredient")
     def get_active_ingredient(self, request):
+        """Retrieve all the informations of an Active Ingredient
+
+        :param request: An ACTIVE_INGREDIENT_ID_MESSAGE request message
+        :return: An ActiveIngredientMessage containing all the Active Ingredient's informations along with the response
+        """
         RecipexServerApi.authentication_check()
         active_ingredient = Key(ActiveIngredient, request.id).get()
         if not active_ingredient:
@@ -3408,13 +3438,18 @@ class RecipexServerApi(remote.Service):
         return RecipexServerApi.return_response(code=OK,
                                                 message="Active ingredient info retrieved.",
                                                 response=ActiveIngredientMessage(
-                                                    name = active_ingredient.name,
+                                                    name=active_ingredient.name,
                                                     response=DefaultResponseMessage(code=OK,
                                                                                     message="Active ingredient info retrieved.")))
 
     @endpoints.method(ACTIVE_INGREDIENT_ID_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/active_ingredients/{id}", http_method="DELETE", name="activeIngredient.deleteActiveIngredient")
     def delete_active_ingredient(self, request):
+        """Delete an existing Active Ingredient
+
+        :param request: An ACTIVE_INGREDIENT_ID_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
         active_ingredient = Key(ActiveIngredient, request.id).get()
         if not active_ingredient:
@@ -3433,6 +3468,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(message_types.VoidMessage, ActiveIngredientsMessage,
                       path="recipexServerApi/active_ingredients", http_method="GET", name="activeIngredient.getActiveIngredients")
     def get_active_ingredients(self, request):
+        """Retrieve all the Active Ingredients
+
+        :param request: An empty message (message_types.VoidMessage)
+        :return: An ActiveIngredientsMessage containing all the Active Ingredients along with the response
+        """
         RecipexServerApi.authentication_check()
 
         active_ingredients_query = ActiveIngredient.query().order(ActiveIngredient.name)
@@ -3452,6 +3492,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(ADD_PRESCRIPTION_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{id}/prescriptions", http_method="POST", name="prescription.addPrescription")
     def add_prescription(self, request):
+        """Add a new Prescription
+
+        :param request: An ADD_PRESCRIPTION_MESSAGE request message
+        :return: A DefaultResponseMessage containing the Datastore id of the Prescription along with the response
+        """
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
         if not user:
@@ -3513,6 +3558,11 @@ class RecipexServerApi(remote.Service):
                       path="recipexServerApi/users/{user_id}/prescriptions/{id}", http_method="POST",
                       name="prescription.getPrescription")
     def get_prescription(self, request):
+        """Retrieve all the informations of a Prescription
+
+        :param request: A PRESCRIPTION_ID_MESSAGE request message
+        :return: A PrescriptionInfoMessage containing all the Prescription's informations along with the response
+        """
         RecipexServerApi.authentication_check()
         user = Key(User, request.user_id).get()
         if not user:
@@ -3563,6 +3613,11 @@ class RecipexServerApi(remote.Service):
     @endpoints.method(UPDATE_PRESCRIPTION_MESSAGE, DefaultResponseMessage,
                       path="recipexServerApi/users/{user_id}/prescriptions/{id}", http_method="PUT", name="prescription.updatePrescription")
     def update_prescription(self, request):
+        """Update an existing Prescription
+
+        :param request: An UPDATE_PRESCRIPTION_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
 
         prescription = Key(User, request.user_id, Prescription, request.id).get()
@@ -3637,6 +3692,11 @@ class RecipexServerApi(remote.Service):
                       path="recipexServerApi/users/{user_id}/prescriptions/{id}", http_method="DELETE",
                       name="prescription.deletePrescription")
     def delete_prescription(self, request):
+        """Delete an existing Prescription
+
+        :param request: A PRESCRIPTION_ID_MESSAGE request message
+        :return: A DefaultResponseMessage containing the response
+        """
         RecipexServerApi.authentication_check()
         user = Key(User, request.user_id).get()
         if not user:
@@ -3662,6 +3722,14 @@ class RecipexServerApi(remote.Service):
 
     @classmethod
     def authentication_check(cls):
+        """To check User Credentials
+
+        This method is used at the beginning of each RPC method offered by
+        the backend to check the user credentials against OAuth 2.0
+        authentication requested by the web service to interact with it.
+
+        :return: Nothing (void)
+        """
         current_user = endpoints.get_current_user()
         if not current_user:
             raise endpoints.UnauthorizedException('Invalid token.')
@@ -3680,9 +3748,16 @@ class RecipexServerApi(remote.Service):
 
     @classmethod
     def return_response(cls, code, message, response):
+        """ To return the response logging the operation's results
+
+        :param code: The HTTP code resulting by the RPC invocation
+        :param message: The message to be displayed
+        :param response: The overall response to be sent back to the User
+        :return: The response given as input
+        """
         logging.info("CODE: %s " % code)
         logging.info("MESSAGE: %s " % message)
         return response
 
-
+"""Web Service instance initialization"""
 APPLICATION = endpoints.api_server([RecipexServerApi])

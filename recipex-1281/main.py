@@ -564,6 +564,8 @@ class UserRelationsMessage(messages.Message):
         is_caregiver_request = Boolean value to tell if there are caregiver requests
         is_patient = Boolean value to tell if there's a patient relation
         is_patient_request = Boolean value to tell if there are patient requests
+        profile_mail = E-mail of the Requested User
+        profile_cal_id = Google Calendar ID of the requested USer
         response = DefaultResponseMessage containing the response
     """
     is_relative = messages.BooleanField(1)
@@ -576,7 +578,9 @@ class UserRelationsMessage(messages.Message):
     is_caregiver_request = messages.BooleanField(8)
     is_patient = messages.BooleanField(9)
     is_patient_request = messages.BooleanField(10)
-    response = messages.MessageField(DefaultResponseMessage, 11)
+    profile_mail = messages.StringField(11)
+    profile_cal_id = messages.StringField(12)
+    response = messages.MessageField(DefaultResponseMessage, 13)
 
 
 class AddMeasurementMessage(messages.Message):
@@ -947,6 +951,7 @@ class RequestInfoMessage(messages.Message):
         sender_pic = URL of the sender User profile pic
         sender_name = Name of the sender User
         sender_surname = Surname of the sender User
+        sender_mail = E-Mail of the sender User
         calendarId = Google Calendar id of the Sender User's Calendar [REQUIRED]
         response = DefaultREsponseMessage containing the response
     """
@@ -961,8 +966,9 @@ class RequestInfoMessage(messages.Message):
     sender_pic = messages.StringField(9)
     sender_name = messages.StringField(10)
     sender_surname = messages.StringField(11)
-    calendarId = messages.StringField(12)
-    response = messages.MessageField(DefaultResponseMessage, 13)
+    sender_mail = messages.StringField(12)
+    calendarId = messages.StringField(13)
+    response = messages.MessageField(DefaultResponseMessage, 14)
 
 
 class UserRequestsMessage(messages.Message):
@@ -1637,7 +1643,7 @@ class RecipexServerApi(remote.Service):
         """Update some User's relations
 
         :param request: A USER_UPDATE_RELATION_INFO request message
-        :return: A DefaultResponseMessage containing the response
+        :return: A DefaultResponseMessage containing the Datastore id of the involved User along with the response
         """
         RecipexServerApi.authentication_check()
         user = Key(User, request.id).get()
@@ -1653,6 +1659,7 @@ class RecipexServerApi(remote.Service):
                                                     response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                     message="Kind not existent."))
 
+        other_id = None
         if request.kind == "RELATIVE":
             relation_usr = Key(User, request.relation_id).get()
             if not relation_usr:
@@ -1666,6 +1673,7 @@ class RecipexServerApi(remote.Service):
                 del user.relatives[relation_usr.key.id()]
             user.put()
             relation_usr.put()
+            other_id = relation_usr.key.id()
         else:
             if request.kind not in REQUEST_KIND:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
@@ -1680,6 +1688,7 @@ class RecipexServerApi(remote.Service):
                                                             response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                             message="Relation user not a caregiver."))
                 patient = user
+                other_id = caregiver.key.parent().id()
             else:
                 caregiver = Caregiver.query(ancestor=user.key).get()
                 if not caregiver:
@@ -1688,6 +1697,7 @@ class RecipexServerApi(remote.Service):
                                                             response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                             message="User not a caregiver."))
                 patient = Key(User, request.relation_id).get()
+                other_id = patient.key.id()
 
             if request.kind == "PC_PHYSICIAN":
                 if patient.pc_physician == caregiver.key:
@@ -1714,7 +1724,8 @@ class RecipexServerApi(remote.Service):
         return RecipexServerApi.return_response(code=OK,
                                                 message="Relation updated.",
                                                 response=DefaultResponseMessage(code=OK,
-                                                                                message="Relation updated."))
+                                                                                message="Relation updated.",
+                                                                                payload=str(other_id)))
 
     @endpoints.method(USER_ID_MESSAGE, UserMeasurementsMessage,
                       path="recipexServerApi/users/{id}/measurements", http_method="GET", name="user.getMeasurements")
@@ -1923,17 +1934,18 @@ class RecipexServerApi(remote.Service):
                 pic = sender.pic
                 name = sender.name
                 surname = sender.surname
+                mail = sender.email
             if request.kind == "RELATIVE":
                 user_requests.append(RequestInfoMessage(id=request.key.id(), receiver=request.receiver.id(),
                                                         sender=request.sender.id(), message=request.message,
                                                         kind=request.kind, role=request.role, sender_pic=pic,
-                                                        sender_name=name, sender_surname=surname,
+                                                        sender_name=name, sender_surname=surname, sender_mail=mail,
                                                         calendarId=request.calendarId, pending=request.isPending))
             else:
                 user_requests.append(RequestInfoMessage(id=request.key.id(), receiver=request.receiver.id(),
                                                         sender=request.sender.id(), message=request.message,
                                                         kind=request.kind, role=request.role, sender_pic=pic,
-                                                        sender_name=name, sender_surname=surname,
+                                                        sender_name=name, sender_surname=surname, sender_mail=mail,
                                                         pending=request.isPending, calendarId=request.calendarId,
                                                         caregiver=request.caregiver.id()))
             if request.isPending:
@@ -2147,7 +2159,8 @@ class RecipexServerApi(remote.Service):
 
         answer = UserRelationsMessage(is_relative_request=False, is_pc_physician=False, is_pc_physician_request=False,
                                       is_visiting_nurse=False, is_visiting_nurse_request=False, is_caregiver=False,
-                                      is_caregiver_request=False, is_patient=False, is_patient_request=False)
+                                      is_caregiver_request=False, is_patient=False, is_patient_request=False,
+                                      profile_mail=profile_user.email, profile_cal_id=profile_user.calendarId)
 
         old_request_prof = Request.query(ancestor=profile_user.key).filter(Request.sender == user.key)
         old_request_user = Request.query(ancestor=user.key).filter(Request.sender == profile_user.key)
@@ -2936,18 +2949,21 @@ class RecipexServerApi(remote.Service):
         pic = None
         name = None
         surname = None
+        mail = None
         if sender:
             pic = sender.pic
             name = sender.name
             surname = sender.surname
+            mail = sender.email
         rqst_msg = RequestInfoMessage(sender=usr_request.sender.id(), receiver=usr_request.receiver.id(),
                                       kind=usr_request.kind, message=usr_request.message, role=usr_request.role,
                                       sender_pic=pic, caregiver=usr_request.caregiver.id(), sender_name=name,
-                                      sender_surname=surname, pending=request.isPending, calendarId=request.calendarId,
+                                      sender_surname=surname, sender_mail=mail, pending=request.isPending,
+                                      calendarId=request.calendarId,
                                       response=DefaultResponseMessage(code=OK, message="Request info retrieved."))
 
-        return RecipexServerApi.return_response(code=NOT_FOUND,
-                                                message="User not existent.",
+        return RecipexServerApi.return_response(code=OK,
+                                                message="Request info retrieved.",
                                                 response=rqst_msg)
 
     @endpoints.method(REQUEST_ANSWER_MESSAGE, DefaultResponseMessage,

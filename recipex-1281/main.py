@@ -70,6 +70,7 @@ class User(ndb.Model):
             visiting_nurse = Key of the User's Visiting nurse within the application
             caregivers = Dictionary keeping the keys of User's generic caregivers within the application
             calendarId = Id of the User's Google Calendar used by the mobile application
+            toRemove = List of E-mail of the Users to be removed from the User's Google Calendar
     """
     email = ndb.StringProperty(required=True)
     name = ndb.StringProperty(required=True)
@@ -85,6 +86,7 @@ class User(ndb.Model):
     visiting_nurse = ndb.KeyProperty()
     caregivers = ndb.PickleProperty(compressed=True, default={})
     calendarId = ndb.StringProperty()
+    toRemove = ndb.StringProperty(repeated=True)
 
 
 class Caregiver(ndb.Model):
@@ -578,9 +580,9 @@ class UserRelationsMessage(messages.Message):
     is_caregiver_request = messages.BooleanField(8)
     is_patient = messages.BooleanField(9)
     is_patient_request = messages.BooleanField(10)
-    profile_mail = messages.StringField(11)
-    profile_cal_id = messages.StringField(12)
-    response = messages.MessageField(DefaultResponseMessage, 13)
+    # profile_mail = messages.StringField(11)
+    # profile_cal_id = messages.StringField(12)
+    response = messages.MessageField(DefaultResponseMessage, 11)
 
 
 class AddMeasurementMessage(messages.Message):
@@ -1214,12 +1216,14 @@ class UserUnseenInfoMessage(messages.Message):
         num_messages = Number of unseen Messages
         num_requests = Number of pending Requests
         num_prescriptions = Number of unseen Prescriptions
+        toRemove = List of E-Mails of Users to be removed from User's Google Calendar
         response = DefaultResponseMessage containing the response
     """
     num_messages = messages.IntegerField(1)
     num_requests = messages.IntegerField(2)
     num_prescriptions = messages.IntegerField(3)
-    response = messages.MessageField(DefaultResponseMessage, 4)
+    toRemove = messages.StringField(4, repeated=True)
+    response = messages.MessageField(DefaultResponseMessage, 5)
 
 
 @endpoints.api(name="recipexServerApi", version="v1",
@@ -1332,7 +1336,8 @@ class RecipexServerApi(remote.Service):
 
         new_user = User(email=request.email, name=request.name, surname=request.surname, pic=request.pic,
                         birth=birth, sex=request.sex, city=request.city, address=request.address,
-                        personal_num=request.personal_num, relatives={}, caregivers={}, calendarId=request.calendarId)
+                        personal_num=request.personal_num, relatives={}, caregivers={}, toRemove=[],
+                        calendarId=request.calendarId)
         user_key = new_user.put()
 
         """Field is the required field to be a caregiver"""
@@ -1659,21 +1664,22 @@ class RecipexServerApi(remote.Service):
                                                     response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                     message="Kind not existent."))
 
-        other_id = None
+        relation_usr = Key(User, request.relation_id).get()
+        if not relation_usr:
+            return RecipexServerApi.return_response(code=NOT_FOUND,
+                                                    message="Relation user not existent.",
+                                                    response=DefaultResponseMessage(code=NOT_FOUND,
+                                                                                    message="Relation user not existent."))
+
+        # other_id = None
         if request.kind == "RELATIVE":
-            relation_usr = Key(User, request.relation_id).get()
-            if not relation_usr:
-                return RecipexServerApi.return_response(code=NOT_FOUND,
-                                                        message="Relation user not existent.",
-                                                        response=DefaultResponseMessage(code=NOT_FOUND,
-                                                                                        message="Relation user not existent."))
             if user.key.id() in relation_usr.relatives.keys():
                 del relation_usr.relatives[user.key.id()]
             if relation_usr.key.id() in user.relatives.keys():
                 del user.relatives[relation_usr.key.id()]
             user.put()
             relation_usr.put()
-            other_id = relation_usr.key.id()
+            # other_id = relation_usr.key.id()
         else:
             if request.kind not in REQUEST_KIND:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
@@ -1688,7 +1694,7 @@ class RecipexServerApi(remote.Service):
                                                             response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                             message="Relation user not a caregiver."))
                 patient = user
-                other_id = caregiver.key.parent().id()
+                # other_id = caregiver.key.parent().id()
             else:
                 caregiver = Caregiver.query(ancestor=user.key).get()
                 if not caregiver:
@@ -1697,7 +1703,7 @@ class RecipexServerApi(remote.Service):
                                                             response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                             message="User not a caregiver."))
                 patient = Key(User, request.relation_id).get()
-                other_id = patient.key.id()
+                # other_id = patient.key.id()
 
             if request.kind == "PC_PHYSICIAN":
                 if patient.pc_physician == caregiver.key:
@@ -1721,11 +1727,22 @@ class RecipexServerApi(remote.Service):
             patient.put()
             caregiver.put()
 
+        relation_caregiver = Caregiver.query(ancestor=Key(User, request.relation_id)).get()
+
+        if relation_caregiver:
+            if relation_usr.key.id() not in user.relatives.keys() and user.pc_physician != relation_caregiver.key and \
+                   user.visiting_nurse != relation_caregiver.key and relation_usr.key.id() not in user.caregivers.keys():
+                relation_usr.toRemove.append(str(user.key.id()))
+        else:
+            if relation_usr.key.id() not in user.relatives.keys():
+                relation_usr.toRemove.append(str(user.key.id()))
+
+        relation_usr.put()
+
         return RecipexServerApi.return_response(code=OK,
                                                 message="Relation updated.",
                                                 response=DefaultResponseMessage(code=OK,
-                                                                                message="Relation updated.",
-                                                                                payload=str(other_id)))
+                                                                                message="Relation updated."))
 
     @endpoints.method(USER_ID_MESSAGE, UserMeasurementsMessage,
                       path="recipexServerApi/users/{id}/measurements", http_method="GET", name="user.getMeasurements")
@@ -2159,8 +2176,8 @@ class RecipexServerApi(remote.Service):
 
         answer = UserRelationsMessage(is_relative_request=False, is_pc_physician=False, is_pc_physician_request=False,
                                       is_visiting_nurse=False, is_visiting_nurse_request=False, is_caregiver=False,
-                                      is_caregiver_request=False, is_patient=False, is_patient_request=False,
-                                      profile_mail=profile_user.email, profile_cal_id=profile_user.calendarId)
+                                      is_caregiver_request=False, is_patient=False, is_patient_request=False)
+        # profile_mail=profile_user.email, profile_cal_id=profile_user.calendarId)
 
         old_request_prof = Request.query(ancestor=profile_user.key).filter(Request.sender == user.key)
         old_request_user = Request.query(ancestor=user.key).filter(Request.sender == profile_user.key)
@@ -2270,6 +2287,7 @@ class RecipexServerApi(remote.Service):
                                                     num_messages=num_messages,
                                                     num_requests=num_requests,
                                                     num_prescriptions=num_prescriptions,
+                                                    toRemove=user.toRemove,
                                                     response=DefaultResponseMessage(code=OK,
                                                                                     message="Unread unseen info retrieved.")))
 

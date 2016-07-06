@@ -331,13 +331,15 @@ class DefaultResponseMessage(messages.Message):
     Attributes:
         code = HTTP code of the response [REQUIRED]
         message = Text message of the response [REQUIRED]
-        payload = Optional tesxtual payload of the response
+        doOperation = Boolean value to determine if there's an operation to do according to the response
+        payload = Optional textual payload of the response
         user = RegisterUserMessage of a related invocation
     """
     code = messages.StringField(1)
     message = messages.StringField(2)
     payload = messages.StringField(3)
-    user = messages.MessageField(RegisterUserMessage, 4)
+    doOperation = messages.BooleanField(4)
+    user = messages.MessageField(RegisterUserMessage, 5)
 
 
 class UpdateUserMessage(messages.Message):
@@ -1725,18 +1727,24 @@ class RecipexServerApi(remote.Service):
             patient.put()
             caregiver.put()
 
+        caregiver = Caregiver.query(ancestor=Key(User, request.id)).get()
         relation_caregiver = Caregiver.query(ancestor=Key(User, request.relation_id)).get()
+
+        doOperation = False
+        if caregiver:
+            if user.key.id() not in relation_usr.relatives.keys() and relation_usr.pc_physician != caregiver.key and \
+                   relation_usr.visiting_nurse != caregiver.key and user.key.id() not in relation_usr.caregivers.keys():
+                doOperation = True
+        else:
+            if user.key.id() not in relation_usr.relatives.keys():
+                doOperation = True
 
         if relation_caregiver:
             if relation_usr.key.id() not in user.relatives.keys() and user.pc_physician != relation_caregiver.key and \
                    user.visiting_nurse != relation_caregiver.key and relation_usr.key.id() not in user.caregivers.keys():
-                if user.toRemove is None:
-                    user.toRemove = []
                 relation_usr.toRemove.append(user.email)
         else:
             if relation_usr.key.id() not in user.relatives.keys():
-                if user.toRemove is None:
-                    user.toRemove = []
                 relation_usr.toRemove.append(user.email)
 
         relation_usr.put()
@@ -1745,6 +1753,7 @@ class RecipexServerApi(remote.Service):
                                                 message="Relation updated.",
                                                 response=DefaultResponseMessage(code=OK,
                                                                                 message="Relation updated.",
+                                                                                doOperation=doOperation,
                                                                                 payload=str(other_id)))
 
     @endpoints.method(USER_ID_MESSAGE, UserMeasurementsMessage,
@@ -2284,13 +2293,17 @@ class RecipexServerApi(remote.Service):
             if not prescription.hasSeen:
                 num_prescriptions += 1
 
+        to_remove = user.toRemove
+        user.toRemove = []
+        user.put()
+
         return RecipexServerApi.return_response(code=OK,
                                                 message="Unread unseen info retrieved.",
                                                 response=UserUnseenInfoMessage(
                                                     num_messages=num_messages,
                                                     num_requests=num_requests,
                                                     num_prescriptions=num_prescriptions,
-                                                    toRemove=user.toRemove,
+                                                    toRemove=to_remove,
                                                     response=DefaultResponseMessage(code=OK,
                                                                                     message="Unread unseen info retrieved.")))
 

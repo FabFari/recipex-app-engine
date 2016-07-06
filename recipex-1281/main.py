@@ -1734,12 +1734,12 @@ class RecipexServerApi(remote.Service):
                    user.visiting_nurse != relation_caregiver.key and relation_usr.key.id() not in user.caregivers.keys():
                 if user.toRemove is None:
                     user.toRemove = []
-                relation_usr.toRemove.append(str(user.email))
+                relation_usr.toRemove.append(user.email)
         else:
             if relation_usr.key.id() not in user.relatives.keys():
                 if user.toRemove is None:
                     user.toRemove = []
-                relation_usr.toRemove.append(str(user.email))
+                relation_usr.toRemove.append(user.email)
 
         relation_usr.put()
 

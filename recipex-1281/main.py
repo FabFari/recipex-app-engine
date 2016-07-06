@@ -567,7 +567,6 @@ class UserRelationsMessage(messages.Message):
         is_patient = Boolean value to tell if there's a patient relation
         is_patient_request = Boolean value to tell if there are patient requests
         profile_mail = E-mail of the Requested User
-        profile_cal_id = Google Calendar ID of the requested USer
         response = DefaultResponseMessage containing the response
     """
     is_relative = messages.BooleanField(1)
@@ -580,9 +579,8 @@ class UserRelationsMessage(messages.Message):
     is_caregiver_request = messages.BooleanField(8)
     is_patient = messages.BooleanField(9)
     is_patient_request = messages.BooleanField(10)
-    # profile_mail = messages.StringField(11)
-    # profile_cal_id = messages.StringField(12)
-    response = messages.MessageField(DefaultResponseMessage, 11)
+    profile_mail = messages.StringField(11)
+    response = messages.MessageField(DefaultResponseMessage, 12)
 
 
 class AddMeasurementMessage(messages.Message):
@@ -1671,7 +1669,7 @@ class RecipexServerApi(remote.Service):
                                                     response=DefaultResponseMessage(code=NOT_FOUND,
                                                                                     message="Relation user not existent."))
 
-        # other_id = None
+        other_id = None
         if request.kind == "RELATIVE":
             if user.key.id() in relation_usr.relatives.keys():
                 del relation_usr.relatives[user.key.id()]
@@ -1679,7 +1677,7 @@ class RecipexServerApi(remote.Service):
                 del user.relatives[relation_usr.key.id()]
             user.put()
             relation_usr.put()
-            # other_id = relation_usr.key.id()
+            other_id = relation_usr.key.id()
         else:
             if request.kind not in REQUEST_KIND:
                 return RecipexServerApi.return_response(code=PRECONDITION_FAILED,
@@ -1694,7 +1692,7 @@ class RecipexServerApi(remote.Service):
                                                             response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                             message="Relation user not a caregiver."))
                 patient = user
-                # other_id = caregiver.key.parent().id()
+                other_id = caregiver.key.parent().id()
             else:
                 caregiver = Caregiver.query(ancestor=user.key).get()
                 if not caregiver:
@@ -1703,7 +1701,7 @@ class RecipexServerApi(remote.Service):
                                                             response=DefaultResponseMessage(code=PRECONDITION_FAILED,
                                                                                             message="User not a caregiver."))
                 patient = Key(User, request.relation_id).get()
-                # other_id = patient.key.id()
+                other_id = patient.key.id()
 
             if request.kind == "PC_PHYSICIAN":
                 if patient.pc_physician == caregiver.key:
@@ -1746,7 +1744,8 @@ class RecipexServerApi(remote.Service):
         return RecipexServerApi.return_response(code=OK,
                                                 message="Relation updated.",
                                                 response=DefaultResponseMessage(code=OK,
-                                                                                message="Relation updated."))
+                                                                                message="Relation updated.",
+                                                                                payload=str(other_id)))
 
     @endpoints.method(USER_ID_MESSAGE, UserMeasurementsMessage,
                       path="recipexServerApi/users/{id}/measurements", http_method="GET", name="user.getMeasurements")
@@ -2180,8 +2179,8 @@ class RecipexServerApi(remote.Service):
 
         answer = UserRelationsMessage(is_relative_request=False, is_pc_physician=False, is_pc_physician_request=False,
                                       is_visiting_nurse=False, is_visiting_nurse_request=False, is_caregiver=False,
-                                      is_caregiver_request=False, is_patient=False, is_patient_request=False)
-        # profile_mail=profile_user.email, profile_cal_id=profile_user.calendarId)
+                                      is_caregiver_request=False, is_patient=False, is_patient_request=False,
+                                      profile_mail=profile_user.email)
 
         old_request_prof = Request.query(ancestor=profile_user.key).filter(Request.sender == user.key)
         old_request_user = Request.query(ancestor=user.key).filter(Request.sender == profile_user.key)

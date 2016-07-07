@@ -1754,29 +1754,29 @@ class RecipexServerApi(remote.Service):
             if user.key.id() not in relation_usr.relatives.keys():  # No Mutual relations
                 do_operation = True
                 relation_usr.toRemove.append(user.email)
-        else: # At least one is a Caregiver
+        else:  # At least one is a Caregiver
             if user.key.id() not in relation_usr.relatives.keys():  # Not Relatives -> We have to check patient relations
                 if caregiver and relation_caregiver:  # Both Carevigers
                     if relation_usr.key.id() not in caregiver.patients.keys() and \
                            user.key.id() not in relation_caregiver.patients.keys():  # No Mutual Relations
                         do_operation = True
                         relation_usr.toRemove.append(user.email)
-                    elif user.key.id() not in relation_caregiver.patients.keys():  # Only User has to preserve
-                        relation_usr.toRemove.append(user.email)
-                    elif relation_usr.key.id() not in caregiver.patients.keys():  # Only Relation User has to preserve
+                    elif user.key.id() not in relation_caregiver.patients.keys():  # Relation User is the patient -> User sees the calendar, Relation User doesn't
                         do_operation = True
+                    elif relation_usr.key.id() not in caregiver.patients.keys():  # User is the patient -> Relation User sees the calendar, User doesn't
+                        relation_usr.toRemove.append(user.email)
                 elif caregiver:  # Only User is a Caregiver
                     if relation_usr.key.id() not in caregiver.patients.keys():  # No Mutual Relations
                         do_operation = True
                         relation_usr.toRemove.append(user.email)
-                    else:  # Only User has to preserve
-                        relation_usr.toRemove.append(user.email)
+                    else:  # Relation User is the patient -> User sees the calendar, Relation User doesn't
+                        do_operation = True
                 else:  # Only Relation User is a Caregiver
                     if user.key.id() not in relation_caregiver.patients.keys():  # No Mutual Relations
                         do_operation = True
                         relation_usr.toRemove.append(user.email)
-                    else:  # Only Relation User has to preserve
-                        do_operation = True
+                    else:  # User is the patient -> Relation User sees the calendar, User doesn't
+                        relation_usr.toRemove.append(user.email)
 
         relation_usr.put()
 

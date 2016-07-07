@@ -1730,14 +1730,15 @@ class RecipexServerApi(remote.Service):
         caregiver = Caregiver.query(ancestor=Key(User, request.id)).get()
         relation_caregiver = Caregiver.query(ancestor=Key(User, request.relation_id)).get()
 
-        doOperation = False
+        '''
+        do_operation = False
         if caregiver:
             if user.key.id() not in relation_usr.relatives.keys() and relation_usr.pc_physician != caregiver.key and \
                    relation_usr.visiting_nurse != caregiver.key and user.key.id() not in relation_usr.caregivers.keys():
-                doOperation = True
+                do_operation = True
         else:
             if user.key.id() not in relation_usr.relatives.keys():
-                doOperation = True
+                do_operation = True
 
         if relation_caregiver:
             if relation_usr.key.id() not in user.relatives.keys() and user.pc_physician != relation_caregiver.key and \
@@ -1746,6 +1747,36 @@ class RecipexServerApi(remote.Service):
         else:
             if relation_usr.key.id() not in user.relatives.keys():
                 relation_usr.toRemove.append(user.email)
+        '''
+
+        do_operation = False
+        if not caregiver and not relation_caregiver:  # Both not Caregivers
+            if user.key.id() not in relation_usr.relatives.keys():  # No Mutual relations
+                do_operation = True
+                relation_usr.toRemove.append(user.email)
+        else: # At least one is a Caregiver
+            if user.key.id() not in relation_usr.relatives.keys():  # Not Relatives -> We have to check patient relations
+                if caregiver and relation_caregiver:  # Both Carevigers
+                    if relation_usr.key.id() not in caregiver.patients.keys() and \
+                           user.key.id() not in relation_caregiver.patients.keys():  # No Mutual Relations
+                        do_operation = True
+                        relation_usr.toRemove.append(user.email)
+                    elif user.key.id() not in relation_caregiver.patients.keys():  # Only User has to preserve
+                        relation_usr.toRemove.append(user.email)
+                    elif relation_usr.key.id() not in caregiver.patients.keys():  # Only Relation User has to preserve
+                        do_operation = True
+                elif caregiver:  # Only User is a Caregiver
+                    if relation_usr.key.id() not in caregiver.patients.keys():  # No Mutual Relations
+                        do_operation = True
+                        relation_usr.toRemove.append(user.email)
+                    else:  # Only User has to preserve
+                        relation_usr.toRemove.append(user.email)
+                else:  # Only Relation User is a Caregiver
+                    if user.key.id() not in relation_caregiver.patients.keys():  # No Mutual Relations
+                        do_operation = True
+                        relation_usr.toRemove.append(user.email)
+                    else:  # Only Relation User has to preserve
+                        do_operation = True
 
         relation_usr.put()
 
@@ -1753,7 +1784,7 @@ class RecipexServerApi(remote.Service):
                                                 message="Relation updated.",
                                                 response=DefaultResponseMessage(code=OK,
                                                                                 message="Relation updated.",
-                                                                                doOperation=doOperation,
+                                                                                doOperation=do_operation,
                                                                                 payload=str(other_id)))
 
     @endpoints.method(USER_ID_MESSAGE, UserMeasurementsMessage,

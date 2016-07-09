@@ -12,8 +12,8 @@ It's made up of two main parts:
 Google App Engine Application
 =============================
 
-`Google Cloud Platform <https://cloud.google.com/>`_infrastructure allows to develop and deploy apps on it's distributed web-server
- network in a very simple and practical way.
+`Google Cloud Platform <https://cloud.google.com/>`_ infrastructure allows to develop and deploy apps on it's distributed 
+web-server network in a very simple and practical way.
 This can be done by writing a Google App Engine Application in your preferred language (i.e. Python)
 giving also the possibility to manage your application by means of a very practical `Google API Console <https://console.developers.google.com/>`_, 
 a web interface offering all the basic tools needed by a developer to control your application.
@@ -28,14 +28,14 @@ Even if the Google Cloud Datastore is a NoSQL database, it is possible to give s
 (it's not a pure Key-Value database). So data can be quite well structured still preserving the high-scalability 
 advantages that a pure NoSQL database offers. The ER Diagram of the data stored for the application is the following:
 
-.. image:: https://github.com/FabFari/recipex-app-engine/blob/master/images/recipex_er_diagram.svg
+.. image:: https://github.com/FabFari/recipex-app-engine/blob/master/images/recipex_er_diagram.png
    :align: center
 
 Google Clud Endpoints API
 =========================
 
 Google Cloud Platform offers also a very simple and practical way to develop a API Backend for a mobile application.
-This is possible using `Google Cloud Endpoints <https://cloud.google.com/endpoints/>`_that is a Google App Engine feature that simplifies
+This is possible using `Google Cloud Endpoints <https://cloud.google.com/endpoints/>`_ that is a Google App Engine feature that simplifies
 the API development and management for your applications. All you have to do to turn your Google App Engine application into a very 
 practical RESTful API is to properly annotate your class and it's methods with the annotations defined into GCE client library and creating
 specific messages to be exchanged between the backend and the mobile application.

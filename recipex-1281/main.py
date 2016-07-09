@@ -1232,8 +1232,7 @@ class UserUnseenInfoMessage(messages.Message):
                                    credentials.ANDROID_CLIENT_ID,
                                    credentials.DEBUG_ID,
                                    credentials.DEBUG_FAB_ID,
-                                   credentials.DEBUG_SARA_ID,
-                                   endpoints.API_EXPLORER_CLIENT_ID],
+                                   credentials.DEBUG_SARA_ID],
                audiences=[credentials.ANDROID_AUDIENCE],
                scopes=[endpoints.EMAIL_SCOPE])
 class RecipexServerApi(remote.Service):

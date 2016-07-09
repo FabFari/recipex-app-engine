@@ -5,6 +5,7 @@ Recipex - Backend
 
 This is the *Backend* used by the mobile application.
 It's made up of two main parts:
+
 - A Google App Engine (GAE) application, written in Python
 - A Google Cloud Endpoints API, offering RPC-like methods to the *Frontend*
 

@@ -11,6 +11,7 @@ It's made up of two main parts:
 
 Google App Engine Application
 =============================
+
 `Google Cloud Platform <https://cloud.google.com/>`_infrastructure allows to develop and deploy apps on it's distributed web-server
  network in a very simple and practical way.
 This can be done by writing a Google App Engine Application in your preferred language (i.e. Python)
@@ -32,6 +33,7 @@ advantages that a pure NoSQL database offers. The ER Diagram of the data stored 
 
 Google Clud Endpoints API
 =========================
+
 Google Cloud Platform offers also a very simple and practical way to develop a API Backend for a mobile application.
 This is possible using `Google Cloud Endpoints <https://cloud.google.com/endpoints/>`_that is a Google App Engine feature that simplifies
 the API development and management for your applications. All you have to do to turn your Google App Engine application into a very 
@@ -48,6 +50,7 @@ That will generate a zip file containing the libraries to be used in your Androi
 
 Application's API
 -----------------
+
 Like any GAE application using Google Cloud Endpoints, the Endpoints API offered by the backen is publicly accessible 
 (even if the access to the remote methods can be restricted using specific OAuth 2.0 checks).
 The Endpoints API for the application is accessible at the following address:

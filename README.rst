@@ -11,8 +11,8 @@ It's made up of two main parts:
 
 Google App Engine Application
 =============================
-`Google Cloud Platform <https://cloud.google.com/>`_ infrastructure allows to develop and deploy apps on it's distributed web-server
- network in a very simple and practical way.
+
+`Google Cloud Platform <https://cloud.google.com/>`_ infrastructure allows to develop and deploy apps on it's distributed web-server network in a very simple and practical way.
 This can be done by writing a Google App Engine Application in your preferred language (i.e. Python)
 giving also the possibility to manage your application by means of a very practical `Google API Console <https://console.developers.google.com/>`_, 
 a web interface offering all the basic tools needed by a developer to control your application.
@@ -22,6 +22,7 @@ simple and powerful client library (`Python NDB CLient library <https://cloud.go
 
 Application Schema
 ------------------
+
 Even if the Google Cloud Datastore is a NoSQL database, it is possible to give some structure to the data 
 (it's not a pure Key-Value database). So data can be quite well structured still preserving the high-scalability 
 advantages that a pure NoSQL database offers. The ER Diagram of the data stored for the application is the following:

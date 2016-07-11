@@ -21,13 +21,13 @@ a highly-scalable NoSQL database integrated within the GAE framework and easily 
 simple and powerful client library (`Python NDB CLient library <https://cloud.google.com/appengine/docs/python/ndb/>`_).
 
 Application Schema
-------------------
+==================
 
 Even if the Google Cloud Datastore is a NoSQL database, it is possible to give some structure to the data 
 (it's not a pure Key-Value database). So data can be quite well structured still preserving the high-scalability 
 advantages that a pure NoSQL database offers. The ER Diagram of the data stored for the application is the following:
 
-.. object:: https://github.com/FabFari/recipex-app-engine/blob/master/images/recipex_er_diagram.svg
+.. image:: https://github.com/FabFari/recipex-app-engine/blob/master/images/recipex_er_diagram.png
    :align: center
 
 Google Clud Endpoints API

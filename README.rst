@@ -57,20 +57,21 @@ https://apis-explorer.appspot.com/apis-explorer/?base=https://recipex-1281.appsp
 Within the API all the avaivable RPCs methods available are listed along with a brief description on the method capabilities.
 
 Info & Contacts
----------------------------------
-You can find personal information about us at:
+===============
 
-- Fabrizio Farinacci: https://it.linkedin.com/in/fabrizio-farinacci-496679116
-- Sara Veterini: https://it.linkedin.com/in/sara-veterini-667684116
+**Team**:
+
+- `Fabrizio Farinacci <https://it.linkedin.com/in/fabrizio-farinacci-496679116/>`_
+- `Sara Veterini <https://it.linkedin.com/in/sara-veterini-667684116/>`_
 
 The project was developed and has been presented within the course of "Pervasive Systems", 
 held by Prof. Ioannis Chatzigiannakis within the Master of Science in Computer Science (MSE-CS),
-at University if Rome "La Sapienza". Informations about the course are available in the following page:
+at University of Rome "La Sapienza". Informations about the course are available in the following page:
 http://ichatz.me/index.php/Site/PervasiveSystems2016.
 
 Additional informations about the project can be found in the following Slideshare presentations:
-http://www.slideshare.net/FabrizioFarinacci1/recipex-your-personal-caregiver-and-lifestyle-makeover.
 
-http://www.slideshare.net/FabrizioFarinacci1/recipex-your-personal-caregiver-and-lifestyle-makeover-62091050
+- http://www.slideshare.net/FabrizioFarinacci1/recipex-your-personal-caregiver-and-lifestyle-makeover
+- http://www.slideshare.net/FabrizioFarinacci1/recipex-your-personal-caregiver-and-lifestyle-makeover-62091050
 
 

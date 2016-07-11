@@ -1,3 +1,10 @@
+.. line-block::
+
+	**University of Rome "La Sapienza"**
+	*Master of Science in Engineering in Computer Science*
+	*Pervasive Systems, a.y. 2015-16*
+	Pervasive Systems Group Project by Fabrizio Farinacci and Sara Veterini
+
 Recipex - Backend
 =======
 .. image:: https://github.com/FabFari/recipex/blob/master/app/screenshot/logo_wide.jpg

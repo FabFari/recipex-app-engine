@@ -29,7 +29,7 @@ advantages that a pure NoSQL database offers. The ER Diagram of the data stored 
 .. image:: https://github.com/FabFari/recipex-app-engine/blob/master/images/recipex_er_diagram.png
    :align: center
 
-Google Clud Endpoints API
+Google Cloud Endpoints API
 =========================
 
 Google Cloud Platform offers also a very simple and practical way to develop a API Backend for a mobile application.

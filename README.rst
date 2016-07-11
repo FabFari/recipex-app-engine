@@ -56,7 +56,7 @@ The Endpoints API for the application is accessible at the following address:
 https://apis-explorer.appspot.com/apis-explorer/?base=https://recipex-1281.appspot.com/_ah/api#p/
 Within the API all the avaivable RPCs methods available are listed along with a brief description on the method capabilities.
 
-Additional info about the project
+Info & Contacts
 ---------------------------------
 You can find personal information about us at:
 

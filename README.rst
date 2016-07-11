@@ -43,7 +43,7 @@ case of an android application the specific command line command to run is the f
 
 .. code-block:: bash
 
-	$ google_appengine/endpointscfg.py get_client_lib java -bs gradle helloworld_api.HelloWorldApi
+	$ google_appengine/endpointscfg.py get_client_lib java -bs gradle main.RecipexServerApi
 	
 That will generate a zip file containing the libraries to be used in your Android project.
 
@@ -58,9 +58,10 @@ Within the API all the avaivable RPCs methods available are listed along with a 
 
 Additional info about the project
 ---------------------------------
-You can find personal information about us at:\n
-https://it.linkedin.com/in/fabrizio-farinacci-496679116
-https://it.linkedin.com/in/sara-veterini-667684116
+You can find personal information about us at:
+
+- Fabrizio Farinacci: https://it.linkedin.com/in/fabrizio-farinacci-496679116
+- Sara Veterini: https://it.linkedin.com/in/sara-veterini-667684116
 
 The project was developed and has been presented within the course of "Pervasive Systems", 
 held by Prof. Ioannis Chatzigiannakis within the Master of Science in Computer Science (MSE-CS),

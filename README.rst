@@ -17,8 +17,7 @@ This can be done by writing a Google App Engine Application in your preferred la
 giving also the possibility to manage your application by means of a very practical `Google API Console <https://console.developers.google.com/>`_, 
 a web interface offering all the basic tools needed by a developer to control your application.
 It also offers a free storage (up to a limit of some GB of space) with the `Google Cloud Datastore <https://cloud.google.com/datastore/>`_, 
-a highly-scalable NoSQL database integrated within the GAE framework and easily accessible (in the case of Python) with a very
-simple and powerful client library (`Python NDB CLient library <https://cloud.google.com/appengine/docs/python/ndb/>`_).
+a highly-scalable NoSQL database integrated within the GAE framework and easily accessible (in the case of Python) with a simple and powerful client library (`Python NDB CLient library <https://cloud.google.com/appengine/docs/python/ndb/>`_).
 
 Application Schema
 ==================

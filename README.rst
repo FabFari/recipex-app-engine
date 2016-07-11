@@ -27,7 +27,7 @@ Even if the Google Cloud Datastore is a NoSQL database, it is possible to give s
 (it's not a pure Key-Value database). So data can be quite well structured still preserving the high-scalability 
 advantages that a pure NoSQL database offers. The ER Diagram of the data stored for the application is the following:
 
-.. image:: https://github.com/FabFari/recipex-app-engine/blob/master/images/recipex_er_diagram.png
+.. object:: https://github.com/FabFari/recipex-app-engine/blob/master/images/recipex_er_diagram.svg
    :align: center
 
 Google Clud Endpoints API
